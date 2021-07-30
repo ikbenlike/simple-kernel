@@ -106,5 +106,3 @@ _start:
     cli
 8:  hlt
     jmp 5b 
-
-#.size _start, . - _start
