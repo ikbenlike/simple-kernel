@@ -4,11 +4,14 @@
 .set MAGIC, 0x1BADB002
 .set CHECKSUM, -(MAGIC + FLAGS)
 
+
+
 .section .multiboot.data, "aw"
 .align 4
 .long MAGIC
 .long FLAGS
 .long CHECKSUM
+
 
 
 .section .initial_stack, "aw", @nobits
@@ -17,8 +20,8 @@ stack_bottom:
 .skip 16385
 stack_top:
 
-.global boot_page_directory
-.global boot_page_table1
+
+
 
 .section .bss, "aw", @nobits
 .align 4096
@@ -26,6 +29,7 @@ boot_page_directory:
 .skip 4096
 boot_page_table1:
 .skip 4096
+
 
 
 .section .multiboot.text, "a"
