@@ -42,13 +42,13 @@ _start:
     jge 2f
 
     movl %esi, %edx
-    orl $0x001, %edx
+    orl $0x101, %edx
     movl %edx, (%edi)
     jmp 3f
 
 2:
     movl %esi, %edx
-    orl $0x003, %edx
+    orl $0x103, %edx
     movl %edx, (%edi)
 
 3:
@@ -68,13 +68,13 @@ _start:
     loop 5b
 
 6:
-    movl $(0x000B8000 | 0x003), boot_page_table1 - 0xC0000000 + 1022 * 4
+    movl $(0x000B8000 | 0x103), boot_page_table1 - 0xC0000000 + 1022 * 4
 
-    movl $(boot_page_table1 - 0xC0000000 + 0x003), boot_page_directory - 0xC0000000 + 0
-    movl $(boot_page_table1 - 0xC0000000 + 0x003), boot_page_directory - 0xC0000000 + 768 * 4
+    movl $(boot_page_table1 - 0xC0000000 + 0x103), boot_page_directory - 0xC0000000 + 0
+    movl $(boot_page_table1 - 0xC0000000 + 0x103), boot_page_directory - 0xC0000000 + 768 * 4
 
     movl $(boot_page_directory - 0xC0000000), %edx
-    orl $0x003, %edx
+    orl $0x103, %edx
     movl %edx, boot_page_directory - 0xC0000000 + 1023 * 4
 
     movl $(boot_page_directory - 0xC0000000), %ecx
@@ -83,6 +83,10 @@ _start:
     movl %cr0, %ecx
     orl $0x80010000, %ecx
     movl %ecx, %cr0
+
+    movl %cr4, %ecx
+    orl $0x80, %ecx
+    movl %ecx, %cr4
 
     lea 7f, %ecx
     jmp *%ecx
