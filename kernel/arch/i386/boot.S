@@ -68,7 +68,7 @@ _start:
     loop 5b
 
 6:
-    movl $(0x000B8000 | 0x103), boot_page_table1 - 0xC0000000 + 1022 * 4
+#    movl $(0x000B8000 | 0x103), boot_page_table1 - 0xC0000000 + 1022 * 4
 
     movl $(boot_page_table1 - 0xC0000000 + 0x103), boot_page_directory - 0xC0000000 + 0
     movl $(boot_page_table1 - 0xC0000000 + 0x103), boot_page_directory - 0xC0000000 + 768 * 4
@@ -102,6 +102,8 @@ _start:
 
     mov $stack_top, %esp
 
+    push %ebx
+    push %eax
     call kernel_main
 
     cli
