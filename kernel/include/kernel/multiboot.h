@@ -71,6 +71,6 @@
         uint32_t addr;
         uint32_t length;
         uint32_t type;
-    };
+    } __attribute__((packed));
 
 #endif
