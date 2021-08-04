@@ -66,7 +66,7 @@ void iprint(uint64_t n){
         n -= 10 * a;
         iprint(a);
     }
-    putchar('0'+n);
+    terminal_putchar('0'+n);
 }
 
 void init_frame_allocator(struct multiboot_info *mbh_physaddr){
@@ -84,6 +84,48 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     }
     terminal_writestring("multiboot provided a memory map\n");
 
-    struct multiboot_mmap_entry *mmap_page_start = (struct multiboot_mmap_entry*)(mbb->vaddr->mmap_addr % PAGE_SIZE);
-    
+    uint32_t mmap_page_start = mbh_vaddr->mmap_addr - (mbh_vaddr->mmap_addr % PAGE_SIZE);
+    uint32_t end_page = mmap_page_start + mbh_vaddr->mmap_length + (PAGE_SIZE - (mbh_vaddr->mmap_length % PAGE_SIZE));
+
+    uint32_t pagen = 900; // page at which to start mapping multiboot mmap
+    uint32_t i = 0;
+    for(uint32_t cur_page = mmap_page_start; cur_page + i * PAGE_SIZE < end_page; i++){
+        int x = map_page((void*)(mmap_page_start + i * PAGE_SIZE), (void*)(0xC0000000 | ((pagen + i) << 12)), 0x1);
+        if(x == MAP_PAGE_PHYSADDR_UNALIGNED){
+            terminal_writestring("physical address unaligned\n");
+        }
+        else if(x == MAP_PAGE_VIRTUALADDR_UNALIGNED){
+            terminal_writestring("virtual address unaligned\n");
+        }
+        else if(x == MAP_PAGE_MAPPING_ALREADY_PRESENT){
+            terminal_writestring("mapping already present\n");
+        }
+        //cur_page += i * PAGE_SIZE;
+    }
+
+    struct multiboot_mmap_entry *mmap_start = 0xC0384000 | (mbh_vaddr->mmap_addr % PAGE_SIZE);
+    //iprint(mmap_start[0].size);
+    terminal_writestring("entry length: ");
+    iprint((uint32_t)(mmap_start[0].length));
+    terminal_putchar('\n');
+    terminal_writestring("entry address: ");
+    iprint((uint32_t)(mmap_start[0].addr));
+    terminal_putchar('\n');
+
+    terminal_writestring("amount of pages mapped: ");
+    iprint(i);
+    terminal_putchar('\n');
+
+    uintptr_t cur_addr = mmap_start;
+    uintptr_t mmap_end = cur_addr + mbh_vaddr->mmap_length;
+
+    while(cur_addr < mmap_end){
+        struct multiboot_mmap_entry *e = (struct multiboot_mmap_entry*)cur_addr;
+        terminal_writestring("memory area of size ");
+        iprint(e->length);
+        terminal_writestring(" starting at address ");
+        iprint(e->addr);
+        terminal_putchar('\n');
+        cur_addr += e->size + sizeof(uintptr_t);
+    }
 }
