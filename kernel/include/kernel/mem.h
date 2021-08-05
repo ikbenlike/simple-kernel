@@ -27,6 +27,10 @@
     void flush_full_tlb();
     void *get_physaddr(void *virtualaddr);
     int map_page(void *physaddr, void *virtualaddr, uint16_t flags);
+    void set_page(void *physaddr);
+    void unset_page(void *physaddr);
+    bool get_page(void *physaddr);
+    void *fresh_page();
     void init_frame_allocator(struct multiboot_info *mbh_physaddr);
 
     #ifdef __cplusplus

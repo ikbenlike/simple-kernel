@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <kernel/multiboot.h>
 #include <kernel/tty.h>
@@ -82,6 +83,22 @@ struct managed_memory pmm = (struct managed_memory){.bitmap = (void*)0, .size = 
 void init_pmm(uint8_t *bm, uint32_t bitmap_size){
     pmm.bitmap = bm;
     pmm.size = bitmap_size;
+}
+
+void set_page(void *physaddr){
+    if((uint32_t)physaddr % PAGE_SIZE) return;
+}
+
+void unset_page(void *physaddr){
+    if((uint32_t)physaddr % PAGE_SIZE) return;
+}
+
+bool get_page(void *physaddr){
+    if((uint32_t)physaddr % PAGE_SIZE) return false;
+}
+
+void *fresh_page(){
+
 }
 
 void init_frame_allocator(struct multiboot_info *mbh_physaddr){
@@ -186,7 +203,7 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
         }
     }
 
-    init_pmm(bitmap_virtaddr, bitmap_size);
+    init_pmm((uint8_t*)bitmap_virtaddr, bitmap_size);
 
     terminal_writestring("total memory size: ");
     iprint(total_size);
