@@ -4,6 +4,14 @@
 #include <kernel/tty.h>
 #include <kernel/mem.h>
 
+#include "util.h"
+
+extern char _kernel_start;
+extern char _kernel_end;
+
+const char *kernel_start_p = &_kernel_start;
+const char *kernel_end_p = &_kernel_end - 0xC0000000;
+
 extern void _flush_full_tlb();
 
 void flush_full_tlb(){
@@ -69,6 +77,13 @@ void iprint(uint64_t n){
     terminal_putchar('0'+n);
 }
 
+struct managed_memory pmm = (struct managed_memory){.bitmap = (void*)0, .size = 0};
+
+void init_pmm(uint8_t *bm, uint32_t bitmap_size){
+    pmm.bitmap = bm;
+    pmm.size = bitmap_size;
+}
+
 void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     uint32_t offset = (uint32_t)mbh_physaddr % PAGE_SIZE;
     void *mbh_page_start = (void*)((uint32_t)mbh_physaddr - offset);
@@ -82,6 +97,7 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
         terminal_writestring("multiboot failed to provide memory map\n");
         return;
     }
+
     terminal_writestring("multiboot provided a memory map\n");
 
     uint32_t mmap_page_start = mbh_vaddr->mmap_addr - (mbh_vaddr->mmap_addr % PAGE_SIZE);
@@ -90,7 +106,10 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     uint32_t pagen = 900; // page at which to start mapping multiboot mmap
     uint32_t i = 0;
     for(uint32_t cur_page = mmap_page_start; cur_page + i * PAGE_SIZE < end_page; i++){
-        int x = map_page((void*)(mmap_page_start + i * PAGE_SIZE), (void*)(0xC0000000 | ((pagen + i) << 12)), 0x1);
+        void *pa = (void*)(mmap_page_start + i * PAGE_SIZE);
+        void *va = (void*)(0xC0000000 | ((pagen + i) << 12));
+        int x = map_page(pa, va, 0x1);
+        //int x = map_page((void*)(mmap_page_start + i * PAGE_SIZE), (void*)(0xC0000000 | ((pagen + i) << 12)), 0x1);
         if(x == MAP_PAGE_PHYSADDR_UNALIGNED){
             terminal_writestring("physical address unaligned\n");
         }
@@ -100,32 +119,85 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
         else if(x == MAP_PAGE_MAPPING_ALREADY_PRESENT){
             terminal_writestring("mapping already present\n");
         }
-        //cur_page += i * PAGE_SIZE;
     }
 
-    struct multiboot_mmap_entry *mmap_start = 0xC0384000 | (mbh_vaddr->mmap_addr % PAGE_SIZE);
+    const struct multiboot_mmap_entry *mmap_start = 0xC0384000 | (mbh_vaddr->mmap_addr % PAGE_SIZE);
     //iprint(mmap_start[0].size);
-    terminal_writestring("entry length: ");
+    /*terminal_writestring("entry length: ");
     iprint((uint32_t)(mmap_start[0].length));
     terminal_putchar('\n');
     terminal_writestring("entry address: ");
     iprint((uint32_t)(mmap_start[0].addr));
-    terminal_putchar('\n');
+    terminal_putchar('\n');*/
 
     terminal_writestring("amount of pages mapped: ");
     iprint(i);
     terminal_putchar('\n');
 
-    uintptr_t cur_addr = mmap_start;
-    uintptr_t mmap_end = cur_addr + mbh_vaddr->mmap_length;
+    const uint32_t kernel_size = (uint32_t)(kernel_end_p - kernel_start_p);
+    const uint32_t kernel_page_count = div_ceil(kernel_size, PAGE_SIZE);
+    //Also functions as offset into current page table.
 
+    uintptr_t cur_addr = mmap_start;
+    const uintptr_t mmap_end = cur_addr + mbh_vaddr->mmap_length;
+    struct multiboot_mmap_entry *kernel_entry = (void*)0;
+
+    uint64_t total_size = 0;
     while(cur_addr < mmap_end){
         struct multiboot_mmap_entry *e = (struct multiboot_mmap_entry*)cur_addr;
+        if((uint32_t)kernel_start_p >= e->addr && e->length >= kernel_size){
+            kernel_entry = e;
+        }
         terminal_writestring("memory area of size ");
         iprint(e->length);
         terminal_writestring(" starting at address ");
         iprint(e->addr);
+        terminal_writestring(" of type ");
+        iprint(e->type);
         terminal_putchar('\n');
+        total_size += e->length;
         cur_addr += e->size + sizeof(uintptr_t);
     }
+
+    const uint64_t page_count = total_size / PAGE_SIZE;
+    const uint32_t bitmap_size = div_ceil(page_count, 8);
+    const uint32_t bitmap_page_count = div_ceil(bitmap_size, PAGE_SIZE);
+    const uint32_t comb_page_count = kernel_page_count + bitmap_page_count;
+
+    //uint32_t kernel_size = (uint32_t)(kernel_end_p - kernel_start_p);
+    //uint32_t kernel_page_count = div_ceil(kernel_size, PAGE_SIZE);
+    //Also functions as offset into current page table.
+
+    uint32_t bitmap_physaddr = 0;
+    if(kernel_entry != (void*)0 && kernel_entry->length / PAGE_SIZE >= comb_page_count){
+        bitmap_physaddr = (uint32_t)kernel_start_p + comb_page_count * PAGE_SIZE;
+    }
+    else {
+        terminal_writestring("kernel area not suitable!\n");
+        return; //handle finding another section in memory
+    }
+
+    uint32_t bitmap_virtaddr = 0xC0000000 | kernel_page_count << 12;
+    for(size_t i = kernel_page_count; i < comb_page_count; i++){
+        uint32_t va = 0xC0000000 | i << 12;
+        uint32_t pa = bitmap_physaddr + (i - kernel_page_count) * PAGE_SIZE;
+        if(map_page((void*)pa, (void*)va, 0x103)){
+            terminal_writestring("mapping error at bitmap\n");
+        }
+    }
+
+    init_pmm(bitmap_virtaddr, bitmap_size);
+
+    terminal_writestring("total memory size: ");
+    iprint(total_size);
+    terminal_putchar('\n');
+    terminal_writestring("amount of pages: ");
+    iprint(total_size / PAGE_SIZE);
+    terminal_putchar('\n');
+    terminal_writestring("required bitmap size: ");
+    iprint(div_ceil(total_size / PAGE_SIZE, 8));
+    terminal_putchar('\n');
+    terminal_writestring("pages required for bitmap: ");
+    iprint(div_ceil(4097, PAGE_SIZE));
+    terminal_putchar('\n');
 }

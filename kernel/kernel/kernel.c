@@ -32,12 +32,12 @@ void kernel_main(uint32_t multiboot_magic, void *multiboot_header){
     init_frame_allocator(mbinfo);
 
 
-    void *pa = get_physaddr((void*)0xC03FE000);
+    /*void *pa = get_physaddr((void*)0xC03FE000);
 
     if(pa == (void*)(0x000B8000)){
         terminal_writestring("aye");
     }
     else if(pa == (void*)0){
         terminal_writestring("nah");
-    }
+    }*/
 }

@@ -7,6 +7,8 @@
         extern "C" {
     #endif
 
+    #include <stdint.h>
+
     #define PAGE_SIZE 4096
 
     enum PageErrors {
@@ -15,6 +17,11 @@
         MAP_PAGE_PHYSADDR_UNALIGNED = 3,
         MAP_PAGE_VIRTUALADDR_UNALIGNED = 4,
         MAP_PAGE_MAPPING_ALREADY_PRESENT = 5,
+    };
+
+    struct managed_memory {
+        uint8_t *bitmap;
+        uint32_t size;
     };
 
     void flush_full_tlb();
