@@ -9,6 +9,7 @@
     //Any value not specified in this enum indicates a reserved area
     enum MmapEntryType {
         MEM_AVAILABLE = 1,
+        MEM_RESERVED = 2,
         MEM_ACPI = 3,
         MEM_PRESERVE = 4,
         MEM_UNAVAILABLE = 5,
