@@ -23,7 +23,8 @@ boot_page_directory:
 boot_page_table1:
 .skip 4096
 
-
+.global _kernel_start
+.global _kernel_end
 
 .section .multiboot.text, "a"
 .global _start
