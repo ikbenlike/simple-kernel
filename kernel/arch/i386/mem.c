@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <string.h>
+
 #include <kernel/multiboot.h>
 #include <kernel/tty.h>
 #include <kernel/mem.h>
@@ -78,23 +80,46 @@ void iprint(uint64_t n){
     terminal_putchar('0'+n);
 }
 
+uint8_t first_zero_in_byte(uint8_t b){
+    if(b == (uint8_t)~0){
+        return 8;
+    }
+
+    for(uint8_t i = 0; i < 8; i++){
+        if((b & (1 << i)) == 0) return i;
+    }
+
+    return 8;
+}
+
+inline void physaddr_to_offsets(void *physaddr, uint32_t *bm_index, uint32_t *offset){
+    uint32_t x = (uint32_t)physaddr;
+    uint32_t y = x / PAGE_SIZE;
+    *bm_index = y / 8;
+    *offset = y % 8;
+}
+
+inline void *offsets_to_physaddr(uint32_t bm_index, uint32_t offset){
+    return (void*)(PAGE_SIZE * (bm_index * 8 + offset));
+}
+
 struct managed_memory pmm = (struct managed_memory){.bitmap = (void*)0, .size = 0};
 
 void init_pmm(uint8_t *bm, uint32_t bitmap_size){
     pmm.bitmap = bm;
     pmm.size = bitmap_size;
-}
+    pmm.last_index = 0;
+    pmm.last_offset = 0;
 
-void set_page_state(void *physaddr){
-    if((uint32_t)physaddr % PAGE_SIZE) return;
-}
-
-void unset_page_state(void *physaddr){
-    if((uint32_t)physaddr % PAGE_SIZE) return;
+    memset(pmm.bitmap, (uint8_t)~0, pmm.size);
 }
 
 bool get_page_state(void *physaddr){
-    if((uint32_t)physaddr % PAGE_SIZE) return false;
+    uint32_t index = 0;
+    uint32_t offset = 0;
+    physaddr_to_offsets(physaddr, &index, &offset);
+
+    return pmm.bitmap[index] & (1 << offset);
 }
 
 void *get_page(){
@@ -102,7 +127,13 @@ void *get_page(){
 }
 
 void free_page(void *physaddr){
+    uint32_t index = 0;
+    uint32_t offset = 0;
+    physaddr_to_offsets(physaddr, &index, &offset);
 
+    pmm.bitmap[index] &= ~(1 << offset);
+    pmm.last_index = index;
+    pmm.last_offset = offset;
 }
 
 void init_frame_allocator(struct multiboot_info *mbh_physaddr){
@@ -195,7 +226,7 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     }
     else {
         terminal_writestring("kernel area not suitable!\n");
-        return; //handle finding another section in memory
+        return; // TODO: handle finding another section in memory
     }
 
     uint32_t bitmap_virtaddr = 0xC0000000 | kernel_page_count << 12;
@@ -209,7 +240,9 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
 
     init_pmm((uint8_t*)bitmap_virtaddr, bitmap_size);
 
-    terminal_writestring("total memory size: ");
+
+
+    /*terminal_writestring("total memory size: ");
     iprint(total_size);
     terminal_putchar('\n');
     terminal_writestring("amount of pages: ");
@@ -220,5 +253,5 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     terminal_putchar('\n');
     terminal_writestring("pages required for bitmap: ");
     iprint(div_ceil(4097, PAGE_SIZE));
-    terminal_putchar('\n');
+    terminal_putchar('\n');*/
 }
