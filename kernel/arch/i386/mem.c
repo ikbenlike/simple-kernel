@@ -85,19 +85,23 @@ void init_pmm(uint8_t *bm, uint32_t bitmap_size){
     pmm.size = bitmap_size;
 }
 
-void set_page(void *physaddr){
+void set_page_state(void *physaddr){
     if((uint32_t)physaddr % PAGE_SIZE) return;
 }
 
-void unset_page(void *physaddr){
+void unset_page_state(void *physaddr){
     if((uint32_t)physaddr % PAGE_SIZE) return;
 }
 
-bool get_page(void *physaddr){
+bool get_page_state(void *physaddr){
     if((uint32_t)physaddr % PAGE_SIZE) return false;
 }
 
-void *fresh_page(){
+void *get_page(){
+
+}
+
+void free_page(void *physaddr){
 
 }
 
