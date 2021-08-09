@@ -105,15 +105,6 @@ inline void *offsets_to_physaddr(uint32_t bm_index, uint32_t offset){
 
 struct managed_memory pmm = (struct managed_memory){.bitmap = (void*)0, .size = 0};
 
-void init_pmm(uint8_t *bm, uint32_t bitmap_size){
-    pmm.bitmap = bm;
-    pmm.size = bitmap_size;
-    pmm.last_index = 0;
-    pmm.last_offset = 0;
-
-    memset(pmm.bitmap, (uint8_t)~0, pmm.size);
-}
-
 bool get_page_state(void *physaddr){
     uint32_t index = 0;
     uint32_t offset = 0;
@@ -238,9 +229,14 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
         }
     }
 
-    init_pmm((uint8_t*)bitmap_virtaddr, bitmap_size);
+    //init_pmm((uint8_t*)bitmap_virtaddr, bitmap_size);
 
+    pmm.bitmap = (uint8_t*)bitmap_virtaddr;
+    pmm.size = bitmap_size;
+    pmm.last_index = 0;
+    pmm.last_offset = 0;
 
+    memset(pmm.bitmap, (uint8_t)~0, pmm.size);
 
     /*terminal_writestring("total memory size: ");
     iprint(total_size);
