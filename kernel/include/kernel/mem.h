@@ -22,13 +22,13 @@
     struct managed_memory {
         uint8_t *bitmap;
         uint32_t size;
+        uint32_t last_index;
+        uint8_t last_offset;
     };
 
     void flush_full_tlb();
     void *get_physaddr(void *virtualaddr);
     int map_page(void *physaddr, void *virtualaddr, uint16_t flags);
-    void set_page_state(void *physaddr);
-    void unset_page_state(void *physaddr);
     bool get_page_state(void *physaddr);
     void *get_page();
     void free_page(void *physaddr);
