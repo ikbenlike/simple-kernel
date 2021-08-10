@@ -72,6 +72,20 @@ int map_page(void *physaddr, void *virtualaddr, uint16_t flags){
     return 0;
 }
 
+int unmap_page(void *virtualaddr){
+    uint32_t va = (uint32_t)virtualaddr;
+
+    uint32_t pdindex = va >> 22;
+    uint32_t ptindex = va >> 12 & 0b1111111111;
+
+    uint32_t *pt = ((uint32_t*)0xFFC00000) + (0x400 * pdindex);
+    pt[ptindex] = (uint32_t)~0;
+
+    flush_full_tlb();
+
+    return 0;
+}
+
 void iprint(uint64_t n){
     if( n > 9 ){
         uint64_t a = n / 10;
@@ -201,8 +215,6 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
 
     uint64_t last_addr = 0;
     uint64_t last_size = 0;
-
-    //uint64_t total_size = 0;
     while(cur_addr < mmap_end){
         struct multiboot_mmap_entry *e = (struct multiboot_mmap_entry*)cur_addr;
         if((uint32_t)kernel_start_p >= e->addr && e->length >= kernel_size){
@@ -221,7 +233,6 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
             last_addr = e->addr;
             last_size = e->length;
         }
-        //total_size += e->length;
         cur_addr += e->size + sizeof(uintptr_t);
     }
 
@@ -264,7 +275,7 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
 
     memset(pmm.bitmap, (uint8_t)~0, pmm.size);
 
-    bool pmm_last_values_set = false;
+    bool pmm_last_set = false;
     cur_addr = (uintptr_t)mmap_start;
     while(cur_addr < mmap_end){
         struct multiboot_mmap_entry *e = (struct multiboot_mmap_entry*)cur_addr;
@@ -277,14 +288,14 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
 
                 free_page(page_addr);
 
-                if(pmm_last_values_set == false){
+                if(pmm_last_set == false){
                     uint32_t index = 0;
                     uint32_t offset = 0;
                     physaddr_to_offsets(page_addr, &index, &offset);
 
                     pmm.last_index = index;
                     pmm.last_offset = offset;
-                    pmm_last_values_set = true;
+                    pmm_last_set = true;
                 }
             }
         }

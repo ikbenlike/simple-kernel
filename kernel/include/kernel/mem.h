@@ -29,6 +29,7 @@
     void flush_full_tlb();
     void *get_physaddr(void *virtualaddr);
     int map_page(void *physaddr, void *virtualaddr, uint16_t flags);
+    int unmap_page(void *virtualaddr);
     bool get_page_state(void *physaddr);
     void *get_page();
     void free_page(void *physaddr);
