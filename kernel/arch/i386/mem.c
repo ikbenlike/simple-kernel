@@ -9,6 +9,8 @@
 
 #include "util.h"
 
+struct managed_memory pmm = (struct managed_memory){.bitmap = (void*)0, .size = 0};
+
 extern char _kernel_start;
 extern char _kernel_end;
 
@@ -103,8 +105,6 @@ inline void *offsets_to_physaddr(uint32_t bm_index, uint32_t offset){
     return (void*)(PAGE_SIZE * (bm_index * 8 + offset));
 }
 
-struct managed_memory pmm = (struct managed_memory){.bitmap = (void*)0, .size = 0};
-
 bool get_page_state(void *physaddr){
     uint32_t index = 0;
     uint32_t offset = 0;
@@ -125,6 +125,27 @@ void free_page(void *physaddr){
     pmm.bitmap[index] &= ~(1 << offset);
     pmm.last_index = index;
     pmm.last_offset = offset;
+}
+
+void sanitize_available(struct multiboot_mmap_entry *e, uintptr_t start, const uintptr_t end){
+    if(e->type != MEM_AVAILABLE) return;
+    uintptr_t cur_addr = start;
+    struct multiboot_mmap_entry *lowest_reserved = (void*)0;
+    while(cur_addr < end){
+        struct multiboot_mmap_entry *cur_entry = (struct multiboot_mmap_entry*)cur_addr;
+        if(cur_entry->type != MEM_AVAILABLE){
+            if(e->addr < cur_entry->addr && e->addr + e->length > cur_entry->addr){
+                if(lowest_reserved == (void*)0 || lowest_reserved->addr > cur_entry->addr){
+                    lowest_reserved = cur_entry;
+                    e->length = cur_entry->addr - e->addr;
+                    terminal_writestring("sanitized area at address ");
+                    iprint(e->addr);
+                    terminal_putchar('\n');
+                }
+            }
+        }
+        cur_addr += cur_entry->size + sizeof(uintptr_t);
+    }
 }
 
 void init_frame_allocator(struct multiboot_info *mbh_physaddr){
@@ -165,13 +186,6 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     }
 
     const struct multiboot_mmap_entry *mmap_start = 0xC0384000 | (mbh_vaddr->mmap_addr % PAGE_SIZE);
-    //iprint(mmap_start[0].size);
-    /*terminal_writestring("entry length: ");
-    iprint((uint32_t)(mmap_start[0].length));
-    terminal_putchar('\n');
-    terminal_writestring("entry address: ");
-    iprint((uint32_t)(mmap_start[0].addr));
-    terminal_putchar('\n');*/
 
     terminal_writestring("amount of pages mapped: ");
     iprint(i);
@@ -181,11 +195,14 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     const uint32_t kernel_page_count = div_ceil(kernel_size, PAGE_SIZE);
     //Also functions as offset into current page table.
 
-    uintptr_t cur_addr = mmap_start;
+    uintptr_t cur_addr = (uintptr_t)mmap_start;
     const uintptr_t mmap_end = cur_addr + mbh_vaddr->mmap_length;
     struct multiboot_mmap_entry *kernel_entry = (void*)0;
 
-    uint64_t total_size = 0;
+    uint64_t last_addr = 0;
+    uint64_t last_size = 0;
+
+    //uint64_t total_size = 0;
     while(cur_addr < mmap_end){
         struct multiboot_mmap_entry *e = (struct multiboot_mmap_entry*)cur_addr;
         if((uint32_t)kernel_start_p >= e->addr && e->length >= kernel_size){
@@ -198,22 +215,33 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
         terminal_writestring(" of type ");
         iprint(e->type);
         terminal_putchar('\n');
-        total_size += e->length;
+        sanitize_available(e, (uintptr_t)mmap_start, mmap_end);
+
+        if(e->type == MEM_AVAILABLE){
+            last_addr = e->addr;
+            last_size = e->length;
+        }
+        //total_size += e->length;
         cur_addr += e->size + sizeof(uintptr_t);
     }
+
+    uint64_t total_size = last_addr + last_size;
+    /*terminal_writestring("total size: ");
+    iprint(total_size);
+    terminal_putchar('\n');
+    terminal_writestring("distance between begin and end: ");
+    iprint((last_addr+last_size) - first_addr);
+    terminal_putchar('\n');*/
 
     const uint64_t page_count = total_size / PAGE_SIZE;
     const uint32_t bitmap_size = div_ceil(page_count, 8);
     const uint32_t bitmap_page_count = div_ceil(bitmap_size, PAGE_SIZE);
-    const uint32_t comb_page_count = kernel_page_count + bitmap_page_count;
-
-    //uint32_t kernel_size = (uint32_t)(kernel_end_p - kernel_start_p);
-    //uint32_t kernel_page_count = div_ceil(kernel_size, PAGE_SIZE);
-    //Also functions as offset into current page table.
+    const uint32_t combined_page_count = kernel_page_count + bitmap_page_count;
+    const char *combined_end_p = kernel_start_p + PAGE_SIZE * combined_page_count;
 
     uint32_t bitmap_physaddr = 0;
-    if(kernel_entry != (void*)0 && kernel_entry->length / PAGE_SIZE >= comb_page_count){
-        bitmap_physaddr = (uint32_t)kernel_start_p + comb_page_count * PAGE_SIZE;
+    if(kernel_entry != (void*)0 && kernel_entry->length / PAGE_SIZE >= combined_page_count){
+        bitmap_physaddr = (uint32_t)kernel_start_p + combined_page_count * PAGE_SIZE;
     }
     else {
         terminal_writestring("kernel area not suitable!\n");
@@ -221,15 +249,13 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     }
 
     uint32_t bitmap_virtaddr = 0xC0000000 | kernel_page_count << 12;
-    for(size_t i = kernel_page_count; i < comb_page_count; i++){
+    for(size_t i = kernel_page_count; i < combined_page_count; i++){
         uint32_t va = 0xC0000000 | i << 12;
         uint32_t pa = bitmap_physaddr + (i - kernel_page_count) * PAGE_SIZE;
         if(map_page((void*)pa, (void*)va, 0x103)){
             terminal_writestring("mapping error at bitmap\n");
         }
     }
-
-    //init_pmm((uint8_t*)bitmap_virtaddr, bitmap_size);
 
     pmm.bitmap = (uint8_t*)bitmap_virtaddr;
     pmm.size = bitmap_size;
@@ -238,7 +264,34 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
 
     memset(pmm.bitmap, (uint8_t)~0, pmm.size);
 
-    /*terminal_writestring("total memory size: ");
+    bool pmm_last_values_set = false;
+    cur_addr = (uintptr_t)mmap_start;
+    while(cur_addr < mmap_end){
+        struct multiboot_mmap_entry *e = (struct multiboot_mmap_entry*)cur_addr;
+        if(e->type == MEM_AVAILABLE){
+            uint32_t npages = e->length / PAGE_SIZE;
+            for(uint32_t i = 0; i < npages; i++){
+                char *page_addr = (char*)(e->addr + i * PAGE_SIZE);
+                if(kernel_start_p <= page_addr && page_addr < combined_end_p)
+                    continue;
+
+                free_page(page_addr);
+
+                if(pmm_last_values_set == false){
+                    uint32_t index = 0;
+                    uint32_t offset = 0;
+                    physaddr_to_offsets(page_addr, &index, &offset);
+
+                    pmm.last_index = index;
+                    pmm.last_offset = offset;
+                    pmm_last_values_set = true;
+                }
+            }
+        }
+        cur_addr += e->size + sizeof(uintptr_t);
+    }
+
+    terminal_writestring("total memory size: ");
     iprint(total_size);
     terminal_putchar('\n');
     terminal_writestring("amount of pages: ");
@@ -248,6 +301,6 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     iprint(div_ceil(total_size / PAGE_SIZE, 8));
     terminal_putchar('\n');
     terminal_writestring("pages required for bitmap: ");
-    iprint(div_ceil(4097, PAGE_SIZE));
-    terminal_putchar('\n');*/
+    iprint(div_ceil(bitmap_size, PAGE_SIZE));
+    terminal_putchar('\n');
 }
