@@ -160,6 +160,13 @@ void sanitize_available(struct multiboot_mmap_entry *e, uintptr_t start, const u
         }
         cur_addr += cur_entry->size + sizeof(uintptr_t);
     }
+    if(e->addr % PAGE_SIZE != 0){
+        e->addr += PAGE_SIZE - (e->addr % PAGE_SIZE);
+        e->length -= PAGE_SIZE - ((e->addr + e->length) % PAGE_SIZE);
+        terminal_writestring("sanitized address and lenght of area at address ");
+        iprint(e->addr);
+        terminal_putchar('\n');
+    }
 }
 
 void init_frame_allocator(struct multiboot_info *mbh_physaddr){
