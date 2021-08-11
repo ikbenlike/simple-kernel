@@ -137,8 +137,8 @@ void free_page(void *physaddr){
     physaddr_to_offsets(physaddr, &index, &offset);
 
     pmm.bitmap[index] &= ~(1 << offset);
-    pmm.last_index = index;
-    pmm.last_offset = offset;
+    pmm.next_index = index;
+    pmm.next_offset = offset;
 }
 
 

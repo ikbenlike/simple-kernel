@@ -22,8 +22,8 @@
     struct managed_memory {
         uint8_t *bitmap;
         uint32_t size;
-        uint32_t last_index;
-        uint8_t last_offset;
+        uint32_t next_index;
+        uint8_t next_offset;
         bool set_up;
     };
 
