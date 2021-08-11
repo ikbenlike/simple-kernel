@@ -25,14 +25,7 @@ void kernel_main(/*uint32_t multiboot_magic, void *multiboot_header*/){
 
     terminal_writestring("something or another\n");
 
-    /*if(multiboot_magic != MULTIBOOT_MAGIC){
-        terminal_writestring("This kernel requires a multiboot-compliant bootloader.");
-    }
-
-    // Physical address. Must first be mapped to virtual page to be useful for us.
-    struct multiboot_info *mbinfo = (struct multiboot_info*)multiboot_header;
-    //init_frame_allocator(mbinfo);*/
-
+    
 
     /*void *pa = get_physaddr((void*)0xC03FE000);
 
