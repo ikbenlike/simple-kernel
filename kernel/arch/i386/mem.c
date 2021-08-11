@@ -128,7 +128,19 @@ bool get_page_state(void *physaddr){
 }
 
 void *get_page(){
+    pmm.bitmap[pmm.next_index] |= 1 << pmm.next_offset;
+    void *r = offsets_to_physaddr(pmm.next_index, pmm.next_offset);
 
+    for(uint32_t i = pmm.next_index; i < pmm.size; i++){
+        if(pmm.bitmap[i] < (uint8_t)~0){
+            uint8_t j = first_zero_in_byte(pmm.bitmap[i]);
+            pmm.next_offset = i;
+            pmm.next_index = j;
+            break;
+        }
+    }
+
+    return r;
 }
 
 void free_page(void *physaddr){
@@ -144,5 +156,18 @@ void free_page(void *physaddr){
 
 void late_pmm_init(struct managed_memory p){
     pmm = p;
+
+    const uint32_t kernel_size = (uint32_t)(kernel_end_p - kernel_start_p);
+    const uint32_t kernel_page_count = div_ceil(kernel_size, PAGE_SIZE);
+    const uint32_t combined_page_count = kernel_page_count + div_ceil(pmm.size, PAGE_SIZE);
+
+    uint32_t bitmap_virtaddr = 0xC0000000 | kernel_page_count << 12;
+    for(size_t i = kernel_page_count; i < combined_page_count; i++){
+        uint32_t va = 0xC0000000 | i << 12;
+        uint32_t pa = (uint32_t)pmm.bitmap + (i - kernel_page_count) * PAGE_SIZE;
+        map_page((void*)pa, (void*)va, 0x103);
+    }
+
+    pmm.bitmap = (uint8_t*)bitmap_virtaddr;
     pmm.set_up = true;
 }

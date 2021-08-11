@@ -28,7 +28,13 @@ void kernel_main(){
 
     terminal_writestring("something or another\n");
 
-    
+    if((uint32_t)(get_early_pmm().bitmap) % PAGE_SIZE == 0){
+        terminal_writestring("amazing\n");
+    }
+
+    if(get_page() != get_page()){
+        terminal_writestring("get_page() probably works partially at least\n");
+    }
 
     /*void *pa = get_physaddr((void*)0xC03FE000);
 
