@@ -10,6 +10,12 @@
 .long FLAGS
 .long CHECKSUM
 
+.section .multiboot.stack, "aw", @nobits
+.align 16
+mb_stack_bottom:
+.skip 16385
+mb_stack_top:
+
 .section .initial_stack, "aw", @nobits
 .align 16
 stack_bottom:
@@ -30,6 +36,14 @@ boot_page_table1:
 .global _start
 .type _start, @function
 _start:
+    mov $mb_stack_top, %esp
+
+    push %ebx
+    push %eax
+    call init_frame_allocator
+    addl $8, %esp
+
+
     movl $(boot_page_table1 - 0xC0000000), %edi
     movl $0, %esi
     movl $1023, %ecx
@@ -103,8 +117,8 @@ _start:
 
     mov $stack_top, %esp
 
-    push %ebx
-    push %eax
+    #push %ebx
+    #push %eax
     call kernel_main
 
     cli

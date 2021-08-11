@@ -141,7 +141,7 @@ void free_page(void *physaddr){
     pmm.last_offset = offset;
 }
 
-void sanitize_available(struct multiboot_mmap_entry *e, uintptr_t start, const uintptr_t end){
+/*void sanitize_available(struct multiboot_mmap_entry *e, uintptr_t start, const uintptr_t end){
     if(e->type != MEM_AVAILABLE) return;
     uintptr_t cur_addr = start;
     struct multiboot_mmap_entry *lowest_reserved = (void*)0;
@@ -167,9 +167,9 @@ void sanitize_available(struct multiboot_mmap_entry *e, uintptr_t start, const u
         iprint(e->addr);
         terminal_putchar('\n');
     }
-}
+}*/
 
-void init_frame_allocator(struct multiboot_info *mbh_physaddr){
+/*void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     uint32_t offset = (uint32_t)mbh_physaddr % PAGE_SIZE;
     void *mbh_page_start = (void*)((uint32_t)mbh_physaddr - offset);
     if(map_page(mbh_page_start, (void*)0xC03FF000, 0x103) == 0){
@@ -251,7 +251,7 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     iprint((last_addr+last_size) - first_addr);
     terminal_putchar('\n');*/
 
-    const uint64_t page_count = total_size / PAGE_SIZE;
+    /*const uint64_t page_count = total_size / PAGE_SIZE;
     const uint32_t bitmap_size = div_ceil(page_count, 8);
     const uint32_t bitmap_page_count = div_ceil(bitmap_size, PAGE_SIZE);
     const uint32_t combined_page_count = kernel_page_count + bitmap_page_count;
@@ -321,4 +321,4 @@ void init_frame_allocator(struct multiboot_info *mbh_physaddr){
     terminal_writestring("pages required for bitmap: ");
     iprint(div_ceil(bitmap_size, PAGE_SIZE));
     terminal_putchar('\n');
-}
+}*/

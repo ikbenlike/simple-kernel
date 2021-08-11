@@ -33,7 +33,7 @@
     bool get_page_state(void *physaddr);
     void *get_page();
     void free_page(void *physaddr);
-    void init_frame_allocator(struct multiboot_info *mbh_physaddr);
+    //void init_frame_allocator(struct multiboot_info *mbh_physaddr);
 
     #ifdef __cplusplus
         }
