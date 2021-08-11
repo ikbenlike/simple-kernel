@@ -6,6 +6,7 @@
 #include <kernel/multiboot.h>
 #include <kernel/tty.h>
 #include <kernel/mem.h>
+#include <kernel/early_pmm_init.h>
 
 #if defined(__linux__)
 #error "A cross compiler is required to compile the kernel."
@@ -15,7 +16,9 @@
 #error "This tutorial needs to be compiled with a ix86-elf compiler"
 #endif
 
-void kernel_main(/*uint32_t multiboot_magic, void *multiboot_header*/){
+void kernel_main(){
+    late_pmm_init(get_early_pmm());
+
     //Map VGA buffer in virtual memory. If mapping fails, silently exit.
     if(map_page((void*)0x000B8000, (void*)0xC03FE000, 0x103)){
         return;

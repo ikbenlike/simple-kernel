@@ -142,3 +142,7 @@ void free_page(void *physaddr){
 }
 
 
+void late_pmm_init(struct managed_memory p){
+    pmm = p;
+    pmm.set_up = true;
+}

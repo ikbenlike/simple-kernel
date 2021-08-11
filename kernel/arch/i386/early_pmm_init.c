@@ -109,6 +109,7 @@ void init_frame_allocator(uint32_t multiboot_magic, struct multiboot_info *mbh){
     pmm->size = bitmap_size;
     pmm->last_index = 0;
     pmm->last_offset = 0;
+    pmm->set_up = false;
 
     for(uint32_t i = 0; i < early_pmm.size; i++){
         early_pmm.bitmap[i] = (uint8_t)~0;
