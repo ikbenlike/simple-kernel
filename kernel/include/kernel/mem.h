@@ -1,6 +1,6 @@
 #ifndef __ARCH_I386_MEM_H__
 
-    #define __KERNEL_MEM_H__
+    #define __ARCH_I386_MEM_H__
 
 
     #ifdef __cplusplus
@@ -24,6 +24,7 @@
         uint32_t size;
         uint32_t last_index;
         uint8_t last_offset;
+        bool set_up;
     };
 
     void flush_full_tlb();
@@ -33,6 +34,7 @@
     bool get_page_state(void *physaddr);
     void *get_page();
     void free_page(void *physaddr);
+    void late_pmm_init(struct managed_memory p);
 
     #ifdef __cplusplus
         }
