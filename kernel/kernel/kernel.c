@@ -7,6 +7,7 @@
 #include <kernel/tty.h>
 #include <kernel/mem.h>
 #include <kernel/early_pmm_init.h>
+#include <kernel/gdt.h>
 
 #if defined(__linux__)
 #error "A cross compiler is required to compile the kernel."
@@ -18,7 +19,7 @@
 
 void kernel_main(){
     late_pmm_init(get_early_pmm());
-
+    load_initial_gdt();
     //Map VGA buffer in virtual memory. If mapping fails, silently exit.
     if(map_page((void*)0x000B8000, (void*)0xC03FE000, 0x103)){
         return;
