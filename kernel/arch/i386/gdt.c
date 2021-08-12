@@ -5,8 +5,6 @@
 #include <kernel/mem.h>
 #include <kernel/gdt.h>
 
-extern void gdt_load(struct gdtr_entry*);
-
 struct gdtr_entry initial_gdtr;
 struct gdt_entry initial_gdt[5];
 
@@ -35,7 +33,7 @@ void load_initial_gdt(){
     initial_gdtr.limit = sizeof(struct gdt_entry) * 5 - 1;
     initial_gdtr.base = (uint32_t)&initial_gdt[0];
 
-    __asm volatile("lgdt %0;"
+    asm volatile("lgdt %0;"
                  "mov  $0x10, %%ax;"
                  "mov  %%ax, %%ds;"
                  "mov  %%ax, %%es;"
