@@ -2,3 +2,5 @@
 isodir
 sysroot
 kernel/output.map
+dump.txt
+qemu-log.txt
