@@ -22,13 +22,16 @@ void config_gdt_entry(struct gdt_entry *entry, uint32_t base, uint32_t limit,
 }
 
 void load_initial_gdt(){
+    uint8_t access = GDT_ACCESS_PR_BIT(1) | GDT_ACCESS_S_BIT(1) | GDT_ACCESS_RW_BIT(1);
     uint8_t flags = GDT_FLAGS_GR(1) | GDT_FLAGS_SZ(1);
 
     config_gdt_entry(&initial_gdt[0], 0, 0, 0, 0);
-    config_gdt_entry(&initial_gdt[1], 0, (uint32_t)~0, 0b10011010, flags);
-    config_gdt_entry(&initial_gdt[2], 0, (uint32_t)~0, 0b10010010, flags);
-    config_gdt_entry(&initial_gdt[3], 0, (uint32_t)~0, 0b11111010, flags);
-    config_gdt_entry(&initial_gdt[4], 0, (uint32_t)~0, 0b11110010, flags);
+    config_gdt_entry(&initial_gdt[1], 0, (uint32_t)~0, access | GDT_ACCESS_EX_BIT(1), flags);
+    config_gdt_entry(&initial_gdt[2], 0, (uint32_t)~0, access, flags);
+    config_gdt_entry(&initial_gdt[3], 0, (uint32_t)~0,
+        access | GDT_ACCESS_PRIVL_BITS(3) | GDT_ACCESS_EX_BIT(1), flags);
+    config_gdt_entry(&initial_gdt[4], 0, (uint32_t)~0,
+        access | GDT_ACCESS_PRIVL_BITS(3), flags);
 
     initial_gdtr.limit = sizeof(struct gdt_entry) * 5 - 1;
     initial_gdtr.base = (uint32_t)&initial_gdt[0];
