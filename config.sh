@@ -13,8 +13,10 @@ export EXEC_PREFIX=$PREFIX
 export BOOTDIR=/boot
 export LIBDIR=$EXEC_PREFIX/lib
 export INCLUDEDIR=$PREFIX/include
- 
-export CFLAGS='-O2 -g'
+
+#TODO: replace with -mgeneral-regs-only with more general flags
+# for the specific sets to be excluded, for clang compatibility.
+export CFLAGS='-O2 -g -mgeneral-regs-only'
 export CPPFLAGS=''
  
 # Configure the cross-compiler to use the desired system root.
