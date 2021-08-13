@@ -4,7 +4,7 @@
 
     #include <stdint.h>
 
-    #define IDT_SIZE
+    #define IDT_SIZE 256
 
     struct idt_entry {
         uint16_t addr_low;
@@ -18,5 +18,7 @@
         uint16_t limit;
         uint32_t base;
     } __attribute__((packed));
+
+    void load_initial_idt();
 
 #endif

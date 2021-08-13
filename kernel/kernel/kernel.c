@@ -8,6 +8,7 @@
 #include <kernel/mem.h>
 #include <kernel/early_pmm_init.h>
 #include <kernel/gdt.h>
+#include <kernel/idt.h>
 
 #if defined(__linux__)
 #error "A cross compiler is required to compile the kernel."
@@ -36,6 +37,10 @@ void kernel_main(){
     if(get_page() != get_page()){
         terminal_writestring("get_page() probably works partially at least\n");
     }
+
+    load_initial_idt();
+
+    asm volatile("int $0x0;" : :);
 
     /*void *pa = get_physaddr((void*)0xC03FE000);
 
