@@ -26,6 +26,6 @@
         iret; \
 
 .section .text
-WRAPPER_DEF_NO_ERR(0, interrupt_handler)
+WRAPPER_DEF_NO_ERR(0, zero_division_handler)
 
 WRAPPER_DEF_NO_ERR(reserved, reserved_interrupt)
