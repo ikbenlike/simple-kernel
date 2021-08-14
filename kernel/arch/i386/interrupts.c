@@ -15,11 +15,105 @@ void zero_division_handler(struct stackframe sf){
     }
 }
 
-void reserved_interrupt(struct stackframe fs){
+void debug_exception_handler(struct stackframe sf){
+
+}
+
+void nmi_interrupt_handler(struct stackframe sf){
+
+}
+
+void breakpoint_exception_handler(struct stackframe sf){
+
+}
+
+void overflow_exception_handler(struct stackframe sf){
+
+}
+
+void bound_range_exception_handler(struct stackframe sf){
+
+}
+
+void invalid_opcode_handler(struct stackframe sf){
     if((sf.cs & 0b11) == 3){
         //TODO terminate program
     }
-    terminal_writestring("FATAL ERROR: this isn't supposed to happen! Reserved interrupt fired.");
+    else {
+        terminal_writestring("FATAL ERROR: the kernel encountered an invalid opcode during execution.");
+        while(1){};
+    }
+}
 
-    while(1){};
+void not_available_exception_handler(struct stackframe sf){
+
+}
+
+void double_fault_handler(struct stackframe sf){
+
+}
+
+void coprocessor_overrun_handler(struct stackframe sf){
+    if((sf.cs & 0b11) == 3){
+        //TODO terminate program
+    }
+    else {
+        terminal_writestring("FATAL ERROR: coprocessor segment overrun in kernel-space.");
+        while(1){};
+    }
+}
+
+void invalid_tss_handler(struct stackframe sf){
+
+}
+
+void segment_not_present_handler(struct stackframe sf){
+
+}
+
+void stack_fault_handler(struct stackframe sf){
+
+}
+
+void general_protection_handler(struct stackframe sf){
+
+}
+
+void page_fault_handler(struct stackframe sf){
+
+}
+
+void floating_point_fault_handler(struct stackframe sf){
+
+}
+
+void alignment_check_handler(struct stackframe sf){
+
+}
+
+void machine_check_handler(struct stackframe sf){
+
+}
+
+void simd_exception_handler(struct stackframe sf){
+
+}
+
+void virtualization_exception_handler(struct stackframe sf){
+
+}
+
+void control_protection_handler(struct stackframe sf){
+
+}
+
+void reserved_interrupt(struct stackframe sf){
+    if((sf.cs & 0b11) == 3){
+        //TODO terminate program
+    }
+    else {
+        terminal_writestring("FATAL ERROR: this isn't supposed to happen! Reserved interrupt fired.");
+        while(1){};
+    }
+
 }
