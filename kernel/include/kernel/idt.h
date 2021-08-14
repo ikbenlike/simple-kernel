@@ -19,6 +19,12 @@
         uint32_t base;
     } __attribute__((packed));
 
+    struct stackframe {
+        uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+        uint32_t err;
+        uint32_t eip, cs, eflags;
+    } __attribute__((packed));
+
     void load_initial_idt();
 
 #endif
