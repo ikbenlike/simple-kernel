@@ -9,6 +9,7 @@
 #include <kernel/early_pmm_init.h>
 #include <kernel/gdt.h>
 #include <kernel/idt.h>
+#include <kernel/pic.h>
 
 #if defined(__linux__)
 #error "A cross compiler is required to compile the kernel."
@@ -40,7 +41,9 @@ void kernel_main(){
 
     load_initial_idt();
 
-    asm volatile("int $0x0;" : :);
+    pic_map(PIC_OFFSET1, PIC_OFFSET2);
+
+    //asm volatile("int $0x0;" : :);
 
     /*void *pa = get_physaddr((void*)0xC03FE000);
 
