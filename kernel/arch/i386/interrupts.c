@@ -2,6 +2,7 @@
 
 #include <kernel/tty.h>
 #include <kernel/idt.h>
+#include <kernel/pic.h>
 
 extern void iprint(uint64_t);
 
@@ -116,4 +117,10 @@ void reserved_interrupt(struct stackframe sf){
         while(1){};
     }
 
+}
+
+void keyboard_handler(struct stackframe){
+    terminal_writestring("pressed");
+    uint8_t code = inb(0x60);
+    pic_send_eoi(2);
 }

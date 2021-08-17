@@ -2,6 +2,8 @@
 
 #include <kernel/pic.h>
 
+extern void iprint(uint64_t);
+
 void outb(uint16_t port, uint8_t value){
     asm volatile ("outb %0, %1" : : "a"(value), "Nd" (port) : "memory");
 }
@@ -68,8 +70,15 @@ void pic_map(uint8_t offset1, uint8_t offset2){
     outb(PIC2_DATA, PIC_ICW4_8086);
     iowait();
 
-    outb(PIC1_DATA, mask1);
-    outb(PIC2_DATA, mask2);
+    outb(PIC1_DATA, 0);
+    outb(PIC2_DATA, 0);
+
+    terminal_writestring("PIC master mask: ");
+    iprint(PIC1_DATA);
+    terminal_putchar('\n');
+    terminal_writestring("PIC slave mask: ");
+    iprint(PIC2_DATA);
+    terminal_putchar('\n');
 }
 
 void pic_disable(){

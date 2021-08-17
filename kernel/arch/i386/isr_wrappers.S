@@ -49,3 +49,5 @@ WRAPPER_DEF_NO_ERR(20, virtualization_exception_handler)
 WRAPPER_DEF_ERR(21, control_protection_handler)
 
 WRAPPER_DEF_NO_ERR(reserved, reserved_interrupt)
+
+WRAPPER_DEF_NO_ERR(33, keyboard_handler)

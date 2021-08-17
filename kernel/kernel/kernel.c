@@ -19,6 +19,8 @@
 #error "This tutorial needs to be compiled with a ix86-elf compiler"
 #endif
 
+extern void iprint(uint64_t);
+
 void kernel_main(){
     late_pmm_init(get_early_pmm());
     load_initial_gdt();
@@ -39,9 +41,20 @@ void kernel_main(){
         terminal_writestring("get_page() probably works partially at least\n");
     }
 
-    load_initial_idt();
-
     pic_map(PIC_OFFSET1, PIC_OFFSET2);
+
+    load_initial_idt();
+    pic_clear_irq_mask(0);
+    pic_clear_irq_mask(1);
+
+    terminal_writestring("PIC master mask: ");
+    iprint(PIC1_DATA);
+    terminal_putchar('\n');
+    terminal_writestring("PIC slave mask: ");
+    iprint(PIC2_DATA);
+    terminal_putchar('\n');
+
+    //asm volatile("int $33;");
 
     //asm volatile("int $0x0;" : :);
 
