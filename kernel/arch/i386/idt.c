@@ -31,6 +31,7 @@ extern void isr_wrapper_19();
 extern void isr_wrapper_20();
 extern void isr_wrapper_21();
 extern void isr_wrapper_reserved();
+extern void isr_wrapper_32();
 extern void isr_wrapper_33();
 
 void config_idt_entry(struct idt_entry *entry, uint32_t addr, uint16_t cs, uint8_t attributes){
@@ -75,7 +76,7 @@ void load_initial_idt(){
         config_idt_entry(&initial_idt[i], (uint32_t)&isr_wrapper_reserved, 0x08, 0b10001110);
     }
 
-    config_idt_entry(&initial_idt[32], (uint32_t)&isr_wrapper_33, 0x08, 0b10001110);
+    config_idt_entry(&initial_idt[32], (uint32_t)&isr_wrapper_32, 0x08, 0b10001110);
     config_idt_entry(&initial_idt[33], (uint32_t)&isr_wrapper_33, 0x08, 0b10001110);
 
     asm volatile("lidt %0; sti;" : : "m" (initial_idtr) :);

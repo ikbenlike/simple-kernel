@@ -119,8 +119,12 @@ void reserved_interrupt(struct stackframe sf){
 
 }
 
-void keyboard_handler(struct stackframe){
+void pit_handler(struct stackframe sf){
+    pic_send_eoi(0);
+}
+
+void keyboard_handler(struct stackframe sf){
     terminal_writestring("pressed");
     uint8_t code = inb(0x60);
-    pic_send_eoi(2);
+    pic_send_eoi(1);
 }
