@@ -48,9 +48,9 @@ void pic_clear_irq_mask(uint8_t line){
     outb(port, inb(port) & ~(1 << line));
 }
 
-void pic_map(uint8_t offset1, uint8_t offset2){
-    uint8_t mask1 = inb(PIC1_DATA);
-    uint8_t mask2 = inb(PIC2_DATA);
+void pic_map(uint8_t offset1, uint8_t offset2, uint8_t m1, uint8_t m2){
+    //uint8_t mask1 = inb(PIC1_DATA);
+    //uint8_t mask2 = inb(PIC2_DATA);
 
     outb(PIC1_COMMAND, PIC_ICW1_INIT | PIC_ICW1_ICW4);
     iowait();
@@ -70,8 +70,8 @@ void pic_map(uint8_t offset1, uint8_t offset2){
     outb(PIC2_DATA, PIC_ICW4_8086);
     iowait();
 
-    outb(PIC1_DATA, mask1);
-    outb(PIC2_DATA, mask2);
+    outb(PIC1_DATA, m1);
+    outb(PIC2_DATA, m2);
 }
 
 void pic_disable(){
@@ -79,4 +79,8 @@ void pic_disable(){
 
     outb(PIC1_DATA, mask);
     outb(PIC2_DATA, mask);
+}
+
+void pic_init(){
+    pic_map(PIC_OFFSET1, PIC_OFFSET2, 0b11111001, ~0U);
 }

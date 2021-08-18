@@ -54,7 +54,8 @@
     void pic_send_eoi(uint8_t irq);
     void pic_set_irq_mask(uint8_t line);
     void pic_clear_irq_mask(uint8_t line);
-    void pic_map(uint8_t offset1, uint8_t offset2);
+    void pic_map(uint8_t offset1, uint8_t offset2, uint8_t m1, uint8_t m2);
     void pic_disable();
+    void pic_init();
 
 #endif

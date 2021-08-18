@@ -41,11 +41,9 @@ void kernel_main(){
         terminal_writestring("get_page() probably works partially at least\n");
     }
 
-    pic_map(PIC_OFFSET1, PIC_OFFSET2);
+    load_initial_idt();
 
-    load_initial_idt(); //These three need to happen in this order for some reason?
-
-    pic_clear_irq_mask(1);
+    pic_init();
 
     while(1){};
 }
