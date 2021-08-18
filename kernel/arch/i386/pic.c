@@ -34,7 +34,7 @@ void pic_set_irq_mask(uint8_t line){
         line -= 8;
     }
 
-    outb(port, inb(port) | (1 << line));
+    outb(port, inb(port) | (1 << line));  
 }
 
 void pic_clear_irq_mask(uint8_t line){
@@ -70,15 +70,8 @@ void pic_map(uint8_t offset1, uint8_t offset2){
     outb(PIC2_DATA, PIC_ICW4_8086);
     iowait();
 
-    outb(PIC1_DATA, 0);
-    outb(PIC2_DATA, 0);
-
-    terminal_writestring("PIC master mask: ");
-    iprint(PIC1_DATA);
-    terminal_putchar('\n');
-    terminal_writestring("PIC slave mask: ");
-    iprint(PIC2_DATA);
-    terminal_putchar('\n');
+    outb(PIC1_DATA, mask1);
+    outb(PIC2_DATA, mask2);
 }
 
 void pic_disable(){

@@ -43,27 +43,9 @@ void kernel_main(){
 
     pic_map(PIC_OFFSET1, PIC_OFFSET2);
 
-    load_initial_idt();
-    pic_clear_irq_mask(0);
+    load_initial_idt(); //These three need to happen in this order for some reason?
+
     pic_clear_irq_mask(1);
 
-    terminal_writestring("PIC master mask: ");
-    iprint(PIC1_DATA);
-    terminal_putchar('\n');
-    terminal_writestring("PIC slave mask: ");
-    iprint(PIC2_DATA);
-    terminal_putchar('\n');
-
-    //asm volatile("int $33;");
-
-    //asm volatile("int $0x0;" : :);
-
-    /*void *pa = get_physaddr((void*)0xC03FE000);
-
-    if(pa == (void*)(0x000B8000)){
-        terminal_writestring("aye");
-    }
-    else if(pa == (void*)0){
-        terminal_writestring("nah");
-    }*/
+    while(1){};
 }
