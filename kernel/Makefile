@@ -60,10 +60,6 @@ install-headers:
 	cp -R --preserve=timestamps -t $(DESTDIR)$(INCLUDEDIR)/kernel/. $(filter-out include/kernel/arch/%, $(shell find include/ -name "*.h"))
 	cp -R --preserve=timestamps include/kernel/arch/$(HOSTARCH)/. $(DESTDIR)$(INCLUDEDIR)/kernel/.
 
-#install-headers:
-#	mkdir -p $(DESTDIR)$(INCLUDEDIR)
-#	cp -R --preserve=timestamps include/. $(DESTDIR)$(INCLUDEDIR)/.
-
 install-kernel: simple.kernel
 	mkdir -p $(DESTDIR)$(BOOTDIR)
 	cp simple.kernel $(DESTDIR)$(BOOTDIR)

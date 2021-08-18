@@ -4,8 +4,6 @@
 
 #include <kernel/idt.h>
 
-#include "interrupts.h"
-
 struct idtr_entry initial_idtr;
 struct idt_entry initial_idt[IDT_SIZE];
 
