@@ -51,7 +51,7 @@ $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
 clean:
 	rm -f simple.kernel
 	rm -f $(OBJS) *.o */*.o */*/*.o
-	rm -f $(OBJS:.o=.d) *d */*.d */*/*.d
+	rm -f $(OBJS:.o=.d) *.d */*.d */*/*.d
 
 install: install-headers install-kernel
 
