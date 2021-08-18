@@ -2,27 +2,23 @@
     .global isr_wrapper_##x; \
     .type isr_wrapper_##x, @function; \
     isr_wrapper_##x: \
-        cli; \
         pushl $0; \
         pushal; \
         cld; \
         call f; \
         popal; \
         addl $4, %esp; \
-        sti; \
         iret; \
 
 #define WRAPPER_DEF_ERR(x, f) \
     .global isr_wrapper_##x; \
     .type isr_wrapper_##x, @function; \
     isr_wrapper_##x: \
-        cli; \
         pushal; \
         cld; \
         call f; \
         popal; \
         addl $4, %esp; \
-        sti; \
         iret; \
 
 .section .text
@@ -50,4 +46,5 @@ WRAPPER_DEF_ERR(21, control_protection_handler)
 
 WRAPPER_DEF_NO_ERR(reserved, reserved_interrupt)
 
+WRAPPER_DEF_NO_ERR(32, pit_handler)
 WRAPPER_DEF_NO_ERR(33, keyboard_handler)
