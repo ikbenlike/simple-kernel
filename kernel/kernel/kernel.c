@@ -45,5 +45,7 @@ void kernel_main(){
 
     pic_init();
 
+    asm volatile ("sti;");
+
     while(1){};
 }

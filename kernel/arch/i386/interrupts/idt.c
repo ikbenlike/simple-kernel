@@ -77,5 +77,5 @@ void load_initial_idt(){
     config_idt_entry(&initial_idt[32], (uint32_t)&isr_wrapper_32, 0x08, 0b10001110);
     config_idt_entry(&initial_idt[33], (uint32_t)&isr_wrapper_33, 0x08, 0b10001110);
 
-    asm volatile("lidt %0; sti;" : : "m" (initial_idtr) :);
+    asm volatile("lidt %0;" : : "m" (initial_idtr) :);
 }
