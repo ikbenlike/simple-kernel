@@ -42,53 +42,38 @@ void terminal_putentryat(char c, uint8_t color, size_t x, size_t y){
     terminal_buffer[index] = vga_entry(c, color);
 }
 
-void terminal_scroll(int line){
-    int loop;
-    char c;
-
-    for(loop = line * (VGA_WIDTH * 2) + 0xB8000; loop < VGA_WIDTH * 2; loop++){
-        c = *(char*)loop;
-        *(char*)(loop - (VGA_WIDTH * 2)) = c;
+void terminal_delete_last_line(){
+    uint16_t *line = terminal_buffer + VGA_WIDTH * (VGA_HEIGHT - 1);
+    for(size_t i = 0; i < VGA_WIDTH; i++){
+        line[i] = vga_entry(' ', terminal_color);
     }
 }
 
-void terminal_delete_last_line(){
-    int x;
-    int *ptr;
-
-    for(x = 0; x < VGA_WIDTH * 2; x++){
-        ptr = 0xB8000 + (VGA_WIDTH * 2) * (VGA_HEIGHT - 1) + x;
-        *ptr = 0;
+void terminal_scroll(){
+    for(size_t i = 0; i < VGA_HEIGHT - 1; i++){
+        void *dest = (void*)(terminal_buffer + VGA_WIDTH * i);
+        void *src = (void*)(terminal_buffer + VGA_WIDTH * (i + 1));
+        memcpy(dest, src, VGA_WIDTH * sizeof(uint16_t));
     }
-
+    terminal_delete_last_line();
 }
 
 void terminal_putchar(char c){
-    int line;
-    unsigned char uc = c;
-
     if(c == '\n'){
-        if(++terminal_row == VGA_HEIGHT){
-            for(line = 1; line <= VGA_HEIGHT - 1; line++){
-                terminal_scroll(line);
-            }
-            terminal_delete_last_line();
-            terminal_row = VGA_HEIGHT - 1;
-        }
+        terminal_row++;
         terminal_column = 0;
-        return;
+    }
+    else {
+        terminal_putentryat(c, terminal_color, terminal_column++, terminal_row);
+        if(terminal_column == VGA_WIDTH){
+            terminal_row++;
+            terminal_column = 0;
+        }
     }
 
-    terminal_putentryat(uc, terminal_color, terminal_column, terminal_row);
-    if(++terminal_column == VGA_WIDTH){
-        terminal_column = 0;
-        if(++terminal_row == VGA_HEIGHT){
-            for(line = 1; line <= VGA_HEIGHT - 1; line++){
-                terminal_scroll(line);
-            }
-            terminal_delete_last_line();
-            terminal_row = VGA_HEIGHT - 1;
-        }
+    if(terminal_row == VGA_HEIGHT){
+        terminal_scroll();
+        terminal_row--;
     }
 }
 
