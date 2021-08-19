@@ -60,6 +60,8 @@ void init_frame_allocator(uint32_t multiboot_magic, struct multiboot_info *mbh){
     extern symbol _kernel_start;
     extern symbol _kernel_end;
 
+    const uint32_t MB = 1048576;
+
     const char *kernel_start_p = _kernel_start;
     const char *kernel_end_p = _kernel_end - 0xC0000000;
 
@@ -124,6 +126,9 @@ void init_frame_allocator(uint32_t multiboot_magic, struct multiboot_info *mbh){
             for(uint32_t i = 0; i < npages; i++){
                 char *page_addr = (char*)(e->addr + i * PAGE_SIZE);
                 if(kernel_start_p <= page_addr && page_addr < combined_end_p)
+                    continue;
+
+                else if(page_addr < MB)
                     continue;
 
                 uint32_t index = 0;
