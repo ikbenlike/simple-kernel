@@ -171,3 +171,44 @@ void late_pmm_init(struct managed_memory p){
     pmm.bitmap = (uint8_t*)bitmap_virtaddr;
     pmm.set_up = true;
 }
+
+/*
+    Kernel starts being mapped at PDE 768, or address 0xC0000000,
+    meaning there is 1GB of space reserved for kernel. Reserve 
+    half of this for the kernel heap, for now. However, take note
+    of the PDE which is recursively mapped at 0xFFC00000.
+*/
+
+struct heap_element {
+    struct heap_element *next;
+    struct heap_element *prev;
+};
+
+const char *heap_start = (char*)0xE0000000;
+const char *heap_end = (char*)(0xFFC00000 - sizeof(struct heap_element));
+
+void init_heap(){
+    struct heap_element *start = (struct heap_element*)heap_start;
+    struct heap_element *end = (struct heap_element*)heap_end;
+
+    start->next = end;
+    start->prev = (void*)0;
+
+    end->next = (void*)0;
+    end->prev = start;
+}
+
+size_t get_area_size(struct heap_element *area){
+    if(area->next == (void*)0)
+        return 0;
+
+    return (uint32_t)area->next - (uint32_t)area;
+}
+
+void *kmalloc(size_t size){
+
+}
+
+void kfree(void *ptr){
+
+}

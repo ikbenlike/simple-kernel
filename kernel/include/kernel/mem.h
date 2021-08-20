@@ -36,6 +36,9 @@
     void free_page(void *physaddr);
     void late_pmm_init(struct managed_memory p);
 
+    void *kmalloc(size_t size);
+    void kfree(void *ptr);
+
     #ifdef __cplusplus
         }
     #endif
