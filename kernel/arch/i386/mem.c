@@ -32,12 +32,12 @@ void *get_physaddr(void *virtualaddr){
 
     uint32_t pt = *(uint32_t*)(0xFFFFF000 | pdindex << 2);
     if(!(pt & 1)){
-        return (void*)0;
+        return NULL;
     }
 
     uint32_t page = *(uint32_t*)(0xFFC00000 | pdindex << 12 | ptindex << 2);
     if(!(page & 1)){
-        return (void*)0;
+        return NULL;
     }
 
     return (void*)((page & ~0b111111111111) | offset);
@@ -57,8 +57,12 @@ int map_page(void *physaddr, void *virtualaddr, uint16_t flags){
     uint32_t pdindex = va >> 22;
     uint32_t ptindex = va >> 12 & 0b1111111111;
 
-    //uint32_t *pd = (uint32_t*)0xFFFFF000;
-    // TODO: dynamically add PDE when no PT yet present in this location
+    uint32_t *pdeptr = (uint32_t*)(0xFFFFF000 | pdindex << 2);
+    if(!(*pdeptr & 1)){
+        void *phys_page = get_page();
+        *pdeptr = (uint32_t)phys_page | 0x103;
+        flush_full_tlb();
+    }
 
     uint32_t *pt = ((uint32_t*)0xFFC00000) + (0x400 * pdindex);
     if(pt[ptindex] & 1){
@@ -177,6 +181,15 @@ void late_pmm_init(struct managed_memory p){
     meaning there is 1GB of space reserved for kernel. Reserve 
     half of this for the kernel heap, for now. However, take note
     of the PDE which is recursively mapped at 0xFFC00000.
+
+    If the heap "starts" at half of the space available to the kernel
+    (that is: PDE 768 + (1024 - 768) / 2 = )
+    (1024 - 768) / 2 = 128
+    PDE = 768 + 128 = 896
+
+    Then the space available to us will be 508M. This is 4M less than
+    half of 1G, as 4M is taken up by the page directory being
+    recursively mapped at the last page directory entry.
 */
 
 struct heap_element {
@@ -184,29 +197,48 @@ struct heap_element {
     struct heap_element *prev;
 };
 
-const char *heap_start = (char*)0xE0000000;
-const char *heap_end = (char*)(0xFFC00000 - sizeof(struct heap_element));
+struct heap_element *const heap_start = (struct heap_element*)0xE0000000;
+struct heap_element *const heap_end = (struct heap_element*)(0xFFC00000 - sizeof(struct heap_element));
+
+size_t get_area_size(struct heap_element *area);
 
 void init_heap(){
-    struct heap_element *start = (struct heap_element*)heap_start;
-    struct heap_element *end = (struct heap_element*)heap_end;
+    map_page(get_page(), heap_start, 0x103);
+    map_page(get_page(), (void*)((uint32_t)heap_end & ~0b111111111111), 0x103);
+    heap_start->next = heap_end;
+    heap_start->prev = NULL;
 
-    start->next = end;
-    start->prev = (void*)0;
+    heap_end->next = NULL;
+    heap_end->prev = heap_start;
 
-    end->next = (void*)0;
-    end->prev = start;
+    terminal_writestring("kernel heap initialized with heap size: ");
+    iprint(get_area_size(heap_start));
+    terminal_putchar('\n');
 }
 
 size_t get_area_size(struct heap_element *area){
-    if(area->next == (void*)0)
+    if(area->next == NULL)
         return 0;
 
-    return (uint32_t)area->next - (uint32_t)area;
+    return (uint32_t)area->next - (uint32_t)area - sizeof(struct heap_element);
 }
 
 void *kmalloc(size_t size){
 
+}
+
+void *kcalloc(size_t nmemb, size_t size){
+    size_t total = nmemb * size;
+    if(nmemb == 0 || size == 0)
+        return NULL;
+    else if(!(size == total / nmemb))
+        return NULL; //return NULL on overflow
+
+    void *km = kmalloc(total);
+    if(km == NULL)
+        return km;
+
+    return memset(km, 0, total);
 }
 
 void kfree(void *ptr){

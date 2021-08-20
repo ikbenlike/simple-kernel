@@ -81,7 +81,8 @@ void general_protection_handler(struct stackframe sf){
 }
 
 void page_fault_handler(struct stackframe sf){
-
+    terminal_writestring("FATAL ERROR: page fault!\n");
+    while(1){};
 }
 
 void floating_point_fault_handler(struct stackframe sf){

@@ -47,5 +47,7 @@ void kernel_main(){
 
     asm volatile ("sti;");
 
+    init_heap();
+
     while(1){};
 }
