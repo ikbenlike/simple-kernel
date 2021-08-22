@@ -201,32 +201,35 @@ struct heap_area *const heap_end = (struct heap_area*)(0xFFC00000 - sizeof(struc
 
 /*
     We want to insure all addresses returned by kmalloc() and
-    kcalloc() are 16-byte aligned to prevent UB for C in regards
+    kcalloc() are 8-byte aligned to prevent UB for C in regards
     to dereferencing addresses which aren't aligned to the size
     of the type they are pointing to. The minimum required alignment
     for all C types is 8 bytes, for a 64-bit integer. We are
-    ensuring 16-byte alignment because `struct heap_area` is
-    16 bytes in size.
+    ensuring 16-byte alignment for memory area start because
+    `struct heap_area` is 8 bytes in size, meaning the area it is
+    the head of will always be 8-byte aligned. It also allows
+    previously allocated memory areas a small amount of expansion.
 
     Since we want all addresses      +--------+-----+----------+
     returned by kmalloc() to be      | member | bit | meaning  |
+    8-byte aligned, and every        +--------+-----+----------+
+    `struct heap_area` to be         | next   | 0   | used y/n |
     16-byte aligned, the lowest      +--------+-----+----------+
-    4 bits of both the `next`        | next   | 0   | used y/n |
+    4 bits of both the `next`        | next   | 1   | Epsilon  |
     and `prev` member of             +--------+-----+----------+
-    `struct heap_area` will be       | next   | 1   | Epsilon  |
+    `struct heap_area` will be       | next   | 2   | None     |
     clear. We will reserve           +--------+-----+----------+
-    these bits and use them          | next   | 2   | None     |
+    these bits and use them          | next   | 3   | None     |
     for additional information.      +--------+-----+----------+
-                                     | next   | 3   | None     |
+                                     | prev   | 0   | None     |
     Not all of the reserved          +--------+-----+----------+
-    bits have an assigned            | prev   | 0   | None     |
+    bits have an assigned            | prev   | 1   | None     |
     meaning as of yet. They          +--------+-----+----------+
-    are still reserved for           | prev   | 1   | None     |
+    are still reserved for           | prev   | 2   | None     |
     future use, so as to             +--------+-----+----------+
-    allow future                     | prev   | 2   | None     |
+    allow future                     | prev   | 3   | None     |
     expandability and to             +--------+-----+----------+
-    ensure 16-byte alignment.        | prev   | 3   | None     |
-                                     +--------+-----+----------+
+    ensure 16-byte alignment.        
 */
 
 inline struct heap_area *get_next_address(struct heap_area *area){
@@ -295,6 +298,8 @@ void init_heap(){
     terminal_putchar('\n');
 }
 
+
+//TODO: maybe enforce kmalloc() return to be 16-byte aligned?
 void *kmalloc(size_t size){
     if (size == 0)
         return NULL;
