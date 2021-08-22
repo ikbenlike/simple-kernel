@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <stdbool.h>
-
 #include <string.h>
 
 #include <kernel/multiboot.h>
@@ -180,10 +179,10 @@ void late_pmm_init(struct managed_memory p){
     Kernel starts being mapped at PDE 768, or address 0xC0000000,
     meaning there is 1GB of space reserved for kernel. Reserve 
     half of this for the kernel heap, for now. However, take note
-    of the PDE which is recursively mapped at 0xFFC00000.
+    of the PD which is recursively mapped at 0xFFC00000.
 
     If the heap "starts" at half of the space available to the kernel
-    (that is: PDE 768 + (1024 - 768) / 2 = )
+    that is: PDE 768 + (1024 - 768) / 2 =
     (1024 - 768) / 2 = 128
     PDE = 768 + 128 = 896
 
@@ -192,39 +191,149 @@ void late_pmm_init(struct managed_memory p){
     recursively mapped at the last page directory entry.
 */
 
-struct heap_element {
-    struct heap_element *next;
-    struct heap_element *prev;
+struct heap_area {
+    uint32_t next;
+    uint32_t prev;
 };
 
-struct heap_element *const heap_start = (struct heap_element*)0xE0000000;
-struct heap_element *const heap_end = (struct heap_element*)(0xFFC00000 - sizeof(struct heap_element));
+struct heap_area *const heap_start = (struct heap_area*)0xE0000000;
+struct heap_area *const heap_end = (struct heap_area*)(0xFFC00000 - sizeof(struct heap_area));
 
-size_t get_area_size(struct heap_element *area);
+/*
+    We want to insure all addresses returned by kmalloc() and
+    kcalloc() are 16-byte aligned to prevent UB for C in regards
+    to dereferencing addresses which aren't aligned to the size
+    of the type they are pointing to. The minimum required alignment
+    for all C types is 8 bytes, for a 64-bit integer. We are
+    ensuring 16-byte alignment because `struct heap_area` is
+    16 bytes in size.
+
+    Since we want all addresses      +--------+-----+----------+
+    returned by kmalloc() to be      | member | bit | meaning  |
+    16-byte aligned, the lowest      +--------+-----+----------+
+    4 bits of both the `next`        | next   | 0   | used y/n |
+    and `prev` member of             +--------+-----+----------+
+    `struct heap_area` will be       | next   | 1   | Epsilon  |
+    clear. We will reserve           +--------+-----+----------+
+    these bits and use them          | next   | 2   | None     |
+    for additional information.      +--------+-----+----------+
+                                     | next   | 3   | None     |
+    Not all of the reserved          +--------+-----+----------+
+    bits have an assigned            | prev   | 0   | None     |
+    meaning as of yet. They          +--------+-----+----------+
+    are still reserved for           | prev   | 1   | None     |
+    future use, so as to             +--------+-----+----------+
+    allow future                     | prev   | 2   | None     |
+    expandability and to             +--------+-----+----------+
+    ensure 16-byte alignment.        | prev   | 3   | None     |
+                                     +--------+-----+----------+
+*/
+
+inline struct heap_area *get_next_address(struct heap_area *area){
+    return (struct heap_area*)(area->next & ~0b1111);
+}
+
+inline void set_next_address(struct heap_area *area, struct heap_area *next){
+    uint32_t n = (uint32_t)next & ~0b1111;
+    uint32_t flags = area->next & 0b1111;
+    area->next = n | flags;
+}
+
+inline struct heap_area *get_prev_address(struct heap_area *area){
+    return (struct heap_area*)(area->prev & ~0b1111);
+}
+
+inline void set_prev_address(struct heap_area *area, struct heap_area *prev){
+    uint32_t n = (uint32_t)prev & ~0b1111;
+    uint32_t flags = area->next & 0b1111;
+    area->next = n | flags;
+}
+
+inline bool get_area_used(struct heap_area *area){
+    return (bool)(area->next & 1U);
+}
+
+inline void set_area_used(struct heap_area *area, bool used){
+    if(used == true)
+        area->next |= 1;
+    else
+        area->next |= ~1UL;
+}
+
+inline bool get_area_epsilon(struct heap_area *area){
+    return (bool)((area->next >> 1) & 1U);
+}
+
+inline void set_area_epsilon(struct heap_area *area, bool ep){
+    if(ep == true)
+        area->next |= 1UL << 1;
+    else
+        area->next |= ~(1UL << 1);
+}
+
+inline size_t get_area_size(struct heap_area *area){
+    if(get_area_epsilon(area) || get_next_address(area) == NULL)
+        return 0;
+
+    return (uint32_t)area->next - (uint32_t)area - sizeof(struct heap_area);
+}
 
 void init_heap(){
     map_page(get_page(), heap_start, 0x103);
     map_page(get_page(), (void*)((uint32_t)heap_end & ~0b111111111111), 0x103);
-    heap_start->next = heap_end;
-    heap_start->prev = NULL;
+    set_next_address(heap_start, heap_end);
+    set_prev_address(heap_start, NULL);
 
-    heap_end->next = NULL;
-    heap_end->prev = heap_start;
+    set_next_address(heap_end, NULL);
+    set_prev_address(heap_end, heap_start);
+    set_area_epsilon(heap_end, true);
 
     terminal_writestring("kernel heap initialized with heap size: ");
     iprint(get_area_size(heap_start));
     terminal_putchar('\n');
 }
 
-size_t get_area_size(struct heap_element *area){
-    if(area->next == NULL)
-        return 0;
-
-    return (uint32_t)area->next - (uint32_t)area - sizeof(struct heap_element);
-}
-
 void *kmalloc(size_t size){
+    if (size == 0)
+        return NULL;
 
+    //Ensure there is space for the padding we require to
+    // have memory areas start align with 16 bytes.
+    size = div_ceil(size + sizeof(struct heap_area), 16) * 16;
+
+    //Initialize best_size to 1G (twice the size of the heap)
+    // so the best-fit algorithm always replaces the initial
+    // value in the loop; this saves us one if-statement. For
+    // this, any value larger than the heap would suffice.
+    size_t best_size = 1073741824;
+    struct heap_area *best_fit = NULL;
+
+    for(struct heap_area *a = heap_start; get_area_epsilon(get_next_address(a)) == false; a = get_next_address(a)){
+        //Look for area with smallest difference between wanted size
+        // and area size.
+        size_t area_size = 0;
+        if(get_area_used(a) == true)
+            continue;
+        else if((area_size = get_area_size(a)) > size && best_size > area_size - size){
+            best_size = area_size;
+            best_fit = a;
+        }
+    }
+
+    //Insert new area head at 16-byte alligned address if
+    // free space left over in current area is of considerable
+    // magnitude.
+
+    if(best_size - size > sizeof(struct heap_area) * 2){
+        struct heap_area *new = (struct heap_area*)((uint32_t)best_fit + size);
+        set_next_address(new, get_next_address(best_fit));
+        set_prev_address(new, best_fit);
+        set_next_address(best_fit, new);
+    }
+
+    set_area_used(best_fit, true);
+
+    return (void*)(best_fit+1);
 }
 
 void *kcalloc(size_t nmemb, size_t size){
