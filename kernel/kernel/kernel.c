@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <kernel/multiboot.h>
 #include <kernel/tty.h>
@@ -48,6 +49,12 @@ void kernel_main(){
     asm volatile ("sti;");
 
     init_heap();
+
+    char *test = kmalloc(50);
+
+    memset(test, 0, 50);
+    strcpy(test, "Hello heap world!");
+    terminal_writestring(test);
 
     while(1){};
 }

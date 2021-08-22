@@ -310,7 +310,7 @@ void *kmalloc(size_t size){
     size_t best_size = 1073741824;
     struct heap_area *best_fit = NULL;
 
-    for(struct heap_area *a = heap_start; get_area_epsilon(get_next_address(a)) == false; a = get_next_address(a)){
+    for(struct heap_area *a = heap_start; get_area_epsilon(a) == false; a = get_next_address(a)){
         //Look for area with smallest difference between wanted size
         // and area size.
         size_t area_size = 0;
@@ -325,6 +325,8 @@ void *kmalloc(size_t size){
     //Insert new area head at 16-byte alligned address if
     // free space left over in current area is of considerable
     // magnitude.
+
+    //TODO: dynamically map extra pages for newly allocated memory.
 
     if(best_size - size > sizeof(struct heap_area) * 2){
         struct heap_area *new = (struct heap_area*)((uint32_t)best_fit + size);
