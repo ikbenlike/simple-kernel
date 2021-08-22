@@ -197,7 +197,7 @@ struct heap_area {
 };
 
 struct heap_area *const heap_start = (struct heap_area*)0xE0000000;
-struct heap_area *const heap_end = (struct heap_area*)(0xFFC00000 - sizeof(struct heap_area));
+struct heap_area *const heap_end = (struct heap_area*)(0xFFC00000 - sizeof(struct heap_area) * 2);
 
 /*
     We want to insure all addresses returned by kmalloc() and
@@ -245,8 +245,8 @@ inline struct heap_area *get_prev_address(struct heap_area *area){
 
 inline void set_prev_address(struct heap_area *area, struct heap_area *prev){
     uint32_t n = (uint32_t)prev & ~0b1111;
-    uint32_t flags = area->next & 0b1111;
-    area->next = n | flags;
+    uint32_t flags = area->prev & 0b1111;
+    area->prev = n | flags;
 }
 
 inline bool get_area_used(struct heap_area *area){
@@ -257,7 +257,7 @@ inline void set_area_used(struct heap_area *area, bool used){
     if(used == true)
         area->next |= 1;
     else
-        area->next |= ~1UL;
+        area->next &= ~1UL;
 }
 
 inline bool get_area_epsilon(struct heap_area *area){
@@ -268,14 +268,15 @@ inline void set_area_epsilon(struct heap_area *area, bool ep){
     if(ep == true)
         area->next |= 1UL << 1;
     else
-        area->next |= ~(1UL << 1);
+        area->next &= ~(1UL << 1);
 }
 
 inline size_t get_area_size(struct heap_area *area){
-    if(get_area_epsilon(area) || get_next_address(area) == NULL)
+    struct heap_area *next = get_next_address(area);
+    if(get_area_epsilon(area) || next == NULL)
         return 0;
 
-    return (uint32_t)area->next - (uint32_t)area - sizeof(struct heap_area);
+    return (uint32_t)next - (uint32_t)area - sizeof(struct heap_area);
 }
 
 void init_heap(){
@@ -283,6 +284,7 @@ void init_heap(){
     map_page(get_page(), (void*)((uint32_t)heap_end & ~0b111111111111), 0x103);
     set_next_address(heap_start, heap_end);
     set_prev_address(heap_start, NULL);
+    set_area_epsilon(heap_start, false);
 
     set_next_address(heap_end, NULL);
     set_prev_address(heap_end, heap_start);
