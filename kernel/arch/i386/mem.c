@@ -282,12 +282,50 @@ inline size_t get_area_size(struct heap_area *area){
     return (uint32_t)next - (uint32_t)area - sizeof(struct heap_area);
 }
 
+void merge_free_areas(struct heap_area *area){
+    struct heap_area *prev = get_prev_address(area);
+    struct heap_area *next = get_next_address(area);
+
+    bool merge_towards_root = prev != NULL && get_area_used(prev) == false;
+    bool merge_towards_tail = next != NULL && get_area_used(next) == false;
+
+    if(merge_towards_root && merge_towards_tail){
+        set_next_address(prev, next);
+        set_prev_address(next, prev);
+    }
+    else if(merge_towards_tail){
+        set_next_address(area, get_next_address(next));
+        set_prev_address(next, area);
+    }
+    else if(merge_towards_root){
+        //set_prev_address(next, area);
+        //set_next_address(area, ne)
+    }
+
+    /*if(get_prev_address(area) == NULL && get_next_address(area) == heap_end){
+        terminal_writestring("success ig\n");
+    }*/
+
+    /*if(get_prev_address(area) == heap_start && get_next_address(area) == heap_end){
+        terminal_writestring("success 2\n");
+    }*/
+
+    /*if(prev != NULL && get_area_used(prev) == false){
+        set_next_address(prev, next);
+        set_prev_address(next, prev);
+    }
+
+    if(next != NULL && get_area_used(next) == false)
+        set_prev_address()*/
+}
+
 void init_heap(){
     map_page(get_page(), heap_start, 0x103);
     map_page(get_page(), (void*)((uint32_t)heap_end & ~0b111111111111), 0x103);
     set_next_address(heap_start, heap_end);
     set_prev_address(heap_start, NULL);
     set_area_epsilon(heap_start, false);
+    set_area_used(heap_start, false);
 
     set_next_address(heap_end, NULL);
     set_prev_address(heap_end, heap_start);
@@ -296,6 +334,10 @@ void init_heap(){
     terminal_writestring("kernel heap initialized with heap size: ");
     iprint(get_area_size(heap_start));
     terminal_putchar('\n');
+
+    if(get_next_address(heap_start) == heap_end){
+        terminal_writestring("good init\n");
+    }
 }
 
 
@@ -335,6 +377,8 @@ void *kmalloc(size_t size){
 
     if(best_size - size > sizeof(struct heap_area) * 2){
         struct heap_area *new = (struct heap_area*)((uint32_t)best_fit + size);
+        new->prev = 0;
+        new->next = 0;
         set_next_address(new, get_next_address(best_fit));
         set_prev_address(new, best_fit);
         set_next_address(best_fit, new);
@@ -349,7 +393,7 @@ void *kcalloc(size_t nmemb, size_t size){
     size_t total = nmemb * size;
     if(nmemb == 0 || size == 0)
         return NULL;
-    else if(!(size == total / nmemb))
+    else if(size != total / nmemb)
         return NULL; //return NULL on overflow
 
     void *km = kmalloc(total);
@@ -360,5 +404,12 @@ void *kcalloc(size_t nmemb, size_t size){
 }
 
 void kfree(void *ptr){
+    if(ptr == NULL) return;
+    
+    struct heap_area *a = (struct heap_area*)ptr - 1;
 
+    if(get_area_used(a) == false) return;
+
+    set_area_used(a, false);
+    merge_free_areas(a);
 }

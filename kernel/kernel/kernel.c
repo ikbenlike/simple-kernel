@@ -53,8 +53,16 @@ void kernel_main(){
     char *test = kmalloc(50);
 
     memset(test, 0, 50);
-    strcpy(test, "Hello heap world!");
+    strcpy(test, "Hello heap world!\n");
     terminal_writestring(test);
+    //kfree(test);
+
+    char *test2 = kmalloc(12);
+    memset(test2, 0, 12);
+    strcpy(test2, "Hello 2\n");
+    terminal_writestring(test2);
+
+    kfree(test2);
 
     while(1){};
 }
