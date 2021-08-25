@@ -55,14 +55,20 @@ void kernel_main(){
     memset(test, 0, 50);
     strcpy(test, "Hello heap world!\n");
     terminal_writestring(test);
-    //kfree(test);
 
     char *test2 = kmalloc(12);
     memset(test2, 0, 12);
     strcpy(test2, "Hello 2\n");
     terminal_writestring(test2);
 
+    char *test3 = kmalloc(20);
+    memset(test3, 0, 20);
+    strcpy(test3, "Hello 3\n");
+    terminal_writestring(test3);
+
+    kfree(test);
     kfree(test2);
+    kfree(test3);
 
     while(1){};
 }

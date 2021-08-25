@@ -290,33 +290,18 @@ void merge_free_areas(struct heap_area *area){
     bool merge_towards_tail = next != NULL && get_area_used(next) == false;
 
     if(merge_towards_root && merge_towards_tail){
-        set_next_address(prev, next);
-        set_prev_address(next, prev);
+        struct heap_area *na = get_next_address(next);
+        set_next_address(prev, na);
+        set_prev_address(na, prev);
     }
     else if(merge_towards_tail){
         set_next_address(area, get_next_address(next));
         set_prev_address(next, area);
     }
     else if(merge_towards_root){
-        //set_prev_address(next, area);
-        //set_next_address(area, ne)
-    }
-
-    /*if(get_prev_address(area) == NULL && get_next_address(area) == heap_end){
-        terminal_writestring("success ig\n");
-    }*/
-
-    /*if(get_prev_address(area) == heap_start && get_next_address(area) == heap_end){
-        terminal_writestring("success 2\n");
-    }*/
-
-    /*if(prev != NULL && get_area_used(prev) == false){
-        set_next_address(prev, next);
         set_prev_address(next, prev);
+        set_next_address(prev, next);
     }
-
-    if(next != NULL && get_area_used(next) == false)
-        set_prev_address()*/
 }
 
 void init_heap(){
