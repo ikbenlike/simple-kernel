@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <kernel/klimits.h>
 #include <kernel/multiboot.h>
 #include <kernel/mem.h>
 
@@ -59,8 +60,6 @@ void init_frame_allocator(uint32_t multiboot_magic, struct multiboot_info *mbh){
 
     extern symbol _kernel_start;
     extern symbol _kernel_end;
-
-    const uint32_t MB = 1048576;
 
     const char *kernel_start_p = _kernel_start;
     const char *kernel_end_p = _kernel_end - 0xC0000000;

@@ -9,8 +9,6 @@
 
     #include <stdint.h>
 
-    #define PAGE_SIZE 4096
-
     enum PageErrors {
         GET_PHYSADDR_PD_INVALID = 1,
         GET_PHYSADDR_PT_INVALID = 2,

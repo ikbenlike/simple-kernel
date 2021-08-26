@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include <kernel/klimits.h>
 #include <kernel/multiboot.h>
 #include <kernel/tty.h>
 #include <kernel/mem.h>
