@@ -232,49 +232,49 @@ struct heap_area *const heap_end = (struct heap_area*)(0xFFC00000 - sizeof(struc
     ensure 16-byte alignment.        
 */
 
-inline struct heap_area *get_next_address(struct heap_area *area){
+static inline struct heap_area *get_next_address(struct heap_area *area){
     return (struct heap_area*)(area->next & ~0b1111);
 }
 
-inline void set_next_address(struct heap_area *area, struct heap_area *next){
+static inline void set_next_address(struct heap_area *area, struct heap_area *next){
     uint32_t n = (uint32_t)next & ~0b1111;
     uint32_t flags = area->next & 0b1111;
     area->next = n | flags;
 }
 
-inline struct heap_area *get_prev_address(struct heap_area *area){
+static inline struct heap_area *get_prev_address(struct heap_area *area){
     return (struct heap_area*)(area->prev & ~0b1111);
 }
 
-inline void set_prev_address(struct heap_area *area, struct heap_area *prev){
+static inline void set_prev_address(struct heap_area *area, struct heap_area *prev){
     uint32_t n = (uint32_t)prev & ~0b1111;
     uint32_t flags = area->prev & 0b1111;
     area->prev = n | flags;
 }
 
-inline bool get_area_used(struct heap_area *area){
+static inline bool get_area_used(struct heap_area *area){
     return (bool)(area->next & 1U);
 }
 
-inline void set_area_used(struct heap_area *area, bool used){
+static inline void set_area_used(struct heap_area *area, bool used){
     if(used == true)
         area->next |= 1;
     else
         area->next &= ~1UL;
 }
 
-inline bool get_area_epsilon(struct heap_area *area){
+static inline bool get_area_epsilon(struct heap_area *area){
     return (bool)((area->next >> 1) & 1U);
 }
 
-inline void set_area_epsilon(struct heap_area *area, bool ep){
+static inline void set_area_epsilon(struct heap_area *area, bool ep){
     if(ep == true)
         area->next |= 1UL << 1;
     else
         area->next &= ~(1UL << 1);
 }
 
-inline size_t get_area_size(struct heap_area *area){
+static inline size_t get_area_size(struct heap_area *area){
     struct heap_area *next = get_next_address(area);
     if(get_area_epsilon(area) || next == NULL)
         return 0;
@@ -282,7 +282,7 @@ inline size_t get_area_size(struct heap_area *area){
     return (uint32_t)next - (uint32_t)area - sizeof(struct heap_area);
 }
 
-void merge_free_areas(struct heap_area *area){
+static void merge_free_areas(struct heap_area *area){
     struct heap_area *prev = get_prev_address(area);
     struct heap_area *next = get_next_address(area);
 
@@ -304,6 +304,9 @@ void merge_free_areas(struct heap_area *area){
     }
 }
 
+
+//TODO: check if there is enough physical memory to spare,
+// so the entire kernel heap can be mapped at init time.
 void init_heap(){
     map_page(get_page(), heap_start, 0x103);
     map_page(get_page(), (void*)((uint32_t)heap_end & ~0b111111111111), 0x103);
@@ -319,10 +322,6 @@ void init_heap(){
     terminal_writestring("kernel heap initialized with heap size: ");
     iprint(get_area_size(heap_start));
     terminal_putchar('\n');
-
-    if(get_next_address(heap_start) == heap_end){
-        terminal_writestring("good init\n");
-    }
 }
 
 
@@ -358,7 +357,7 @@ void *kmalloc(size_t size){
     // free space left over in current area is of considerable
     // magnitude.
 
-    //We only check of page mappings when we insert a new area
+    //We only check for page mappings when we insert a new area
     // head, because if the next area head is sufficiently close
     // as to forego adding a new one, the pages up until then
     // have already been mapped by previous allocations, or we
