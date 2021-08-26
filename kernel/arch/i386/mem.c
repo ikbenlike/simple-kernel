@@ -403,6 +403,35 @@ void *kcalloc(size_t nmemb, size_t size){
     return memset(km, 0, total);
 }
 
+//TODO: check if next area is unused and
+// expand current area?
+void *krealloc(void *ptr, size_t size){
+    if(size == 0)
+        return NULL;
+    else if(ptr == NULL)
+        return kmalloc(size);
+
+    struct heap_area *a = (struct heap_area*)ptr - 1;
+    size_t area_size = get_area_size(a);
+    if(area_size >= size){
+        return ptr;
+    }
+
+    void *new = kmalloc(size);
+    if(new == NULL)
+        return NULL;
+
+    memcpy(new, ptr, area_size);
+    kfree(ptr);
+    return new;
+}
+
+
+//TODO: implement kpalloc()/kpagealloc()
+void *kpagealloc(size_t n){
+
+}
+
 void kfree(void *ptr){
     if(ptr == NULL) return;
     

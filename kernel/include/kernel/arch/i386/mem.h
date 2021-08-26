@@ -40,6 +40,8 @@
 
     void *kmalloc(size_t size);
     void *kcalloc(size_t nmemb, size_t size);
+    void *krealloc(void *ptr, size_t size);
+    void *kpagealloc(size_t n);
     void kfree(void *ptr);
 
     #ifdef __cplusplus
