@@ -6,6 +6,6 @@
     
     #define KB (1024)
     #define MB (KB*1024)
-    #define GB (GB*1024)
+    #define GB (MB*1024)
 
 #endif
