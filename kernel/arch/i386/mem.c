@@ -157,7 +157,6 @@ void free_page(void *physaddr){
     pmm.next_offset = offset;
 }
 
-
 void late_pmm_init(struct managed_memory p){
     pmm = p;
 
@@ -325,7 +324,6 @@ void init_heap(){
     terminal_putchar('\n');
 }
 
-
 //TODO: maybe enforce kmalloc() return to be 16-byte aligned?
 void *kmalloc(size_t size){
     if (size == 0)
@@ -348,7 +346,7 @@ void *kmalloc(size_t size){
         size_t area_size = 0;
         if(get_area_used(a) == true)
             continue;
-        else if((area_size = get_area_size(a)) > size && best_size > area_size - size){
+        else if((area_size = get_area_size(a)) > size && best_size - size > area_size - size){
             best_size = area_size;
             best_fit = a;
         }
@@ -426,10 +424,25 @@ void *krealloc(void *ptr, size_t size){
     return new;
 }
 
-
 //TODO: implement kpalloc()/kpagealloc()
 void *kpagealloc(size_t n){
+    if(n == 0)
+        return NULL;
 
+    size_t size = n * PAGE_SIZE;
+    size_t best_size = GB;
+    struct heap_area *best_fit = NULL;
+
+    for(struct heap_area *a = heap_start; get_area_epsilon(a) == false; a = get_next_address(a)){
+        size_t area_size = 0;
+        if(get_area_used(a) == true)
+            continue;
+        else if((area_size = get_area_size(a)) > size && best_size - size > area_size - size){
+
+        }
+    }
+
+    return NULL;
 }
 
 void kfree(void *ptr){
