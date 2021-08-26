@@ -358,10 +358,25 @@ void *kmalloc(size_t size){
     // free space left over in current area is of considerable
     // magnitude.
 
-    //TODO: dynamically map extra pages for newly allocated memory.
-
+    //We only check of page mappings when we insert a new area
+    // head, because if the next area head is sufficiently close
+    // as to forego adding a new one, the pages up until then
+    // have already been mapped by previous allocations, or we
+    // are at the end of the heap.
     if(best_size - size > sizeof(struct heap_area) * 2){
         struct heap_area *new = (struct heap_area*)((uint32_t)best_fit + size);
+
+        char *start_page = (char*)((uint32_t)best_fit & ~0b111111111111);
+        char *end_page = (char*)((uint32_t)new & ~0b111111111111);
+
+        //TODO: add VMM (at least for kernel memory) so checking if
+        // the page is already mapped is less computationally expensive.
+        for(char *p = start_page; p <= end_page; p += PAGE_SIZE){
+            if(get_physaddr(p) == NULL){
+                map_page(get_page(), p, 0x103);
+            }
+        }
+
         new->prev = 0;
         new->next = 0;
         set_next_address(new, get_next_address(best_fit));
