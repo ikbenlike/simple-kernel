@@ -191,6 +191,8 @@ void late_pmm_init(struct managed_memory p){
     recursively mapped at the last page directory entry.
 */
 
+//TODO: add padding to make this struct 16 bytes large,
+// or get rid of 16-byte area begin alignment requirement.
 struct heap_area {
     uint32_t next;
     uint32_t prev;
@@ -308,6 +310,9 @@ static void merge_free_areas(struct heap_area *area){
 //TODO: check if there is enough physical memory to spare,
 // so the entire kernel heap can be mapped at init time.
 void init_heap(){
+    static bool ran = false;
+    if(ran == true) return;
+
     map_page(get_page(), heap_start, 0x103);
     map_page(get_page(), (void*)((uint32_t)heap_end & ~0b111111111111), 0x103);
     set_next_address(heap_start, heap_end);
@@ -322,6 +327,8 @@ void init_heap(){
     terminal_writestring("kernel heap initialized with heap size: ");
     iprint(get_area_size(heap_start));
     terminal_putchar('\n');
+
+    ran = true;
 }
 
 //TODO: maybe enforce kmalloc() return to be 16-byte aligned?
@@ -332,6 +339,7 @@ void *kmalloc(size_t size){
     //Ensure there is space for the padding we require to
     // have memory areas start align with 16 bytes.
     size = div_ceil(size + sizeof(struct heap_area), 16) * 16;
+    //TODO: see if `sizeof(struct heap_area)` is really needed here
 
     //Initialize best_size to 1G (twice the size of the heap)
     // so the best-fit algorithm always replaces the initial
@@ -351,6 +359,8 @@ void *kmalloc(size_t size){
             best_fit = a;
         }
     }
+
+    if(best_fit == NULL) return NULL;
 
     //Insert new area head at 16-byte alligned address if
     // free space left over in current area is of considerable
@@ -438,11 +448,40 @@ void *kpagealloc(size_t n){
         if(get_area_used(a) == true)
             continue;
         else if((area_size = get_area_size(a)) > size && best_size - size > area_size - size){
+            uint32_t next_page = ((uint32_t)a & ~0b111111111111) + PAGE_SIZE;
 
+            size_t full_size = size + (next_page - (uint32_t)a) + sizeof(struct heap_area);
+            if(next_page - sizeof(struct heap_area) != (uint32_t)a)
+                full_size += sizeof(struct heap_area);
+
+            if(area_size > full_size && best_size - full_size > area_size - full_size){
+                best_size = area_size;
+                best_fit = a;
+            }
         }
     }
 
-    return NULL;
+    if(best_fit == NULL) return NULL;
+
+    uint32_t next_page = ((uint32_t)best_fit & ~0b111111111111) + PAGE_SIZE;
+    size_t full_size = size + (next_page - (uint32_t)best_fit) + sizeof(struct heap_area);
+
+    if(best_size - full_size > sizeof(struct heap_area) * 2){
+        //Insert a new head right before the first page that is
+        // allocated if the previous free area is large enough
+        // to permit this.
+
+        //Insert a head at the end of the allocated area if
+        // the free area after the allocated area is large
+        // enough to permit this.
+
+        //Check if all the allocated pages are mapped.
+    }
+
+    //TODO: see `struct heap_area` todo
+    return (void*)(best_fit + 1);
+    //With current alignment logic and struct size, returned address
+    // would be 8 bytes before the first allocated page.
 }
 
 void kfree(void *ptr){
