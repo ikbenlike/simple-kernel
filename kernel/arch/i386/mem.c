@@ -460,22 +460,46 @@ void *kpagealloc(size_t n){
 
     if(best_fit == NULL) return NULL;
 
+    struct heap_area *ret = best_fit;
     uint32_t next_page = ((uint32_t)best_fit & ~0b111111111111) + PAGE_SIZE;
     size_t full_size = size + (next_page - (uint32_t)best_fit) + sizeof(struct heap_area);
 
-    if(best_size - full_size > sizeof(struct heap_area) * 2){
-        //Insert a new head right before the first page that is
-        // allocated if the previous free area is large enough
-        // to permit this.
+    //Insert a new head right before the first page that is
+    // allocated if the previous free area is large enough
+    // to permit this.
+    if(next_page - sizeof(struct heap_area) != (uint32_t)ret){
+        struct heap_area *next = get_next_address(ret);
+        ret = (struct heap_area*)(next_page - sizeof(struct heap_area));
+        set_prev_address(ret, best_fit);
+        set_next_address(ret, next);
+        set_next_address(best_fit, ret);
+    }
 
+    if(best_size - full_size > sizeof(struct heap_area) * 2){
         //Insert a head at the end of the allocated area if
         // the free area after the allocated area is large
         // enough to permit this.
+        struct heap_area *new = (struct heap_area*)((uint32_t)ret + size);
+
+        char *start_page = (char*)((uint32_t)ret & ~0b111111111111);
+        char *end_page = (char*)((uint32_t)new & ~0b111111111111);
 
         //Check if all the allocated pages are mapped.
+        //TODO: see kmalloc() todo
+        for(char *p = start_page; p <= end_page; p += PAGE_SIZE){
+            if(get_physaddr(p) == NULL){
+                map_page(get_page(), p, 0x103);
+            }
+        }
+
+        new->prev = 0;
+        new->next = 0;
+        set_next_address(new, get_next_address(ret));
+        set_prev_address(new, ret);
+        set_next_address(ret, new);
     }
 
-    return (void*)(best_fit + 1);
+    return (void*)(ret + 1);
 }
 
 void kfree(void *ptr){
