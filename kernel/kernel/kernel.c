@@ -73,16 +73,16 @@ void kernel_main(){
     strcpy(smth, "Hello big heap!\n");
     terminal_writestring(smth);
 
-    kfree(test);
-    kfree(test2);
-    kfree(test3);
-    kfree(big);
-
     char *test4 = krealloc(test, 100);
     terminal_writestring(test4);
     memset(test4, 0, 100);
     strcpy(test4, "And now for something longer...\n");
     terminal_writestring(test4);
+
+    kfree(test2);
+    kfree(test3);
+    kfree(test4);
+    kfree(big);
 
     while(1){};
 }
