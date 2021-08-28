@@ -191,15 +191,13 @@ void late_pmm_init(struct managed_memory p){
     recursively mapped at the last page directory entry.
 */
 
-//TODO: add padding to make this struct 16 bytes large,
-// or get rid of 16-byte area begin alignment requirement.
 struct heap_area {
     uint32_t next;
     uint32_t prev;
 };
 
 struct heap_area *const heap_start = (struct heap_area*)0xE0000000;
-struct heap_area *const heap_end = (struct heap_area*)(0xFFC00000 - sizeof(struct heap_area) * 2);
+struct heap_area *const heap_end = (struct heap_area*)(0xFFC00000 - sizeof(struct heap_area));
 
 /*
     We want to insure all addresses returned by kmalloc() and
@@ -207,40 +205,39 @@ struct heap_area *const heap_end = (struct heap_area*)(0xFFC00000 - sizeof(struc
     to dereferencing addresses which aren't aligned to the size
     of the type they are pointing to. The minimum required alignment
     for all C types is 8 bytes, for a 64-bit integer. We are
-    ensuring 16-byte alignment for memory area start because
+    ensuring 8-byte alignment for memory area start because
     `struct heap_area` is 8 bytes in size, meaning the area it is
-    the head of will always be 8-byte aligned. It also allows
-    previously allocated memory areas a small amount of expansion.
+    the head of will also always be 8-byte aligned.
 
     Since we want all addresses      +--------+-----+----------+
     returned by kmalloc() to be      | member | bit | meaning  |
     8-byte aligned, and every        +--------+-----+----------+
     `struct heap_area` to be         | next   | 0   | used y/n |
-    16-byte aligned, the lowest      +--------+-----+----------+
-    4 bits of both the `next`        | next   | 1   | Epsilon  |
+    8-byte aligned, the lowest       +--------+-----+----------+
+    3 bits of both the `next`        | next   | 1   | Epsilon  |
     and `prev` member of             +--------+-----+----------+
     `struct heap_area` will be       | next   | 2   | None     |
     clear. We will reserve           +--------+-----+----------+
-    these bits and use them          | next   | 3   | None     |
+    these bits and use them          | prev   | 0   | None     |
     for additional information.      +--------+-----+----------+
-                                     | prev   | 0   | None     |
+                                     | prev   | 1   | None     |
     Not all of the reserved          +--------+-----+----------+
-    bits have an assigned            | prev   | 1   | None     |
+    bits have an assigned            | prev   | 2   | None     |
     meaning as of yet. They          +--------+-----+----------+
-    are still reserved for           | prev   | 2   | None     |
-    future use, so as to             +--------+-----+----------+
-    allow future                     | prev   | 3   | None     |
-    expandability and to             +--------+-----+----------+
+    are still reserved for
+    future use, so as to
+    allow future
+    expandability and to
     ensure 16-byte alignment.        
 */
 
 static inline struct heap_area *get_next_address(struct heap_area *area){
-    return (struct heap_area*)(area->next & ~0b1111);
+    return (struct heap_area*)(area->next & ~0b111);
 }
 
 static inline void set_next_address(struct heap_area *area, struct heap_area *next){
-    uint32_t n = (uint32_t)next & ~0b1111;
-    uint32_t flags = area->next & 0b1111;
+    uint32_t n = (uint32_t)next & ~0b111;
+    uint32_t flags = area->next & 0b111;
     area->next = n | flags;
 }
 
@@ -249,8 +246,8 @@ static inline struct heap_area *get_prev_address(struct heap_area *area){
 }
 
 static inline void set_prev_address(struct heap_area *area, struct heap_area *prev){
-    uint32_t n = (uint32_t)prev & ~0b1111;
-    uint32_t flags = area->prev & 0b1111;
+    uint32_t n = (uint32_t)prev & ~0b111;
+    uint32_t flags = area->prev & 0b111;
     area->prev = n | flags;
 }
 
@@ -338,7 +335,7 @@ void *kmalloc(size_t size){
 
     //Ensure there is space for the padding we require to
     // have memory areas start align with 16 bytes.
-    size = div_ceil(size + sizeof(struct heap_area), 16) * 16;
+    size = div_ceil(size + sizeof(struct heap_area), 8) * 8;
     //TODO: see if `sizeof(struct heap_area)` is really needed here
 
     //Initialize best_size to 1G (twice the size of the heap)
@@ -478,10 +475,7 @@ void *kpagealloc(size_t n){
         //Check if all the allocated pages are mapped.
     }
 
-    //TODO: see `struct heap_area` todo
     return (void*)(best_fit + 1);
-    //With current alignment logic and struct size, returned address
-    // would be 8 bytes before the first allocated page.
 }
 
 void kfree(void *ptr){
