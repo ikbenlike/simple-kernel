@@ -242,7 +242,7 @@ static inline void set_next_address(struct heap_area *area, struct heap_area *ne
 }
 
 static inline struct heap_area *get_prev_address(struct heap_area *area){
-    return (struct heap_area*)(area->prev & ~0b1111);
+    return (struct heap_area*)(area->prev & ~0b111);
 }
 
 static inline void set_prev_address(struct heap_area *area, struct heap_area *prev){
@@ -263,7 +263,17 @@ static inline void set_area_used(struct heap_area *area, bool used){
 }
 
 static inline bool get_area_epsilon(struct heap_area *area){
-    return (bool)((area->next >> 1) & 1U);
+    if(area == NULL){
+        terminal_writestring("epsilon(area) == NULL\n");
+        while(1);
+    }
+    //terminal_writestring("get_area_epsilon()\n");
+    bool r = (bool)((area->next >> 1) & 1U);
+    //if(r == true) terminal_writestring("epsilon == true\n");
+    //else terminal_writestring("epsilon == false\n");
+    return r;
+
+    //return (bool)((area->next >> 1) & 1U);
 }
 
 static inline void set_area_epsilon(struct heap_area *area, bool ep){
@@ -275,6 +285,7 @@ static inline void set_area_epsilon(struct heap_area *area, bool ep){
 
 static inline size_t get_area_size(struct heap_area *area){
     struct heap_area *next = get_next_address(area);
+    //terminal_writestring("get_area_size()\n");
     if(get_area_epsilon(area) || next == NULL)
         return 0;
 
@@ -348,14 +359,29 @@ void *kmalloc(size_t size){
     for(struct heap_area *a = heap_start; get_area_epsilon(a) == false; a = get_next_address(a)){
         //Look for area with smallest difference between wanted size
         // and area size.
+
+        /*terminal_writestring("a->prev: ");
+        iprint((uint32_t)(a->prev));
+        terminal_putchar('\n');
+        terminal_writestring("a->next: ");
+        iprint((uint32_t)(a->next));
+        terminal_putchar('\n');*/
+
+        //terminal_writestring("kmalloc loop\n");
         size_t area_size = 0;
-        if(get_area_used(a) == true)
+        if(get_area_used(a) == true){
+            //terminal_writestring("area used!\n");
             continue;
+        }
         else if((area_size = get_area_size(a)) > size && best_size - size > area_size - size){
+            //terminal_writestring("area fit\n");
             best_size = area_size;
             best_fit = a;
         }
+        //terminal_writestring("end of loop\n");
     }
+
+    terminal_writestring("after loop\n");
 
     if(best_fit == NULL) return NULL;
 
@@ -431,6 +457,19 @@ void *krealloc(void *ptr, size_t size){
     return new;
 }
 
+struct heap_area *new_tail = NULL;
+
+void check_new_tail(){
+    if(new_tail == NULL) return;
+
+    terminal_writestring("new_tail->prev: ");
+    iprint((uint32_t)get_prev_address(new_tail));
+    terminal_putchar('\n');
+    terminal_writestring("new_tail->next: ");
+    iprint((uint32_t)get_next_address(new_tail));
+    terminal_putchar('\n');
+}
+
 //TODO: implement kpalloc()/kpagealloc()
 void *kpagealloc(size_t n){
     if(n == 0)
@@ -460,6 +499,10 @@ void *kpagealloc(size_t n){
 
     if(best_fit == NULL) return NULL;
 
+    /*if(best_fit == heap_start && get_next_address(heap_start) == heap_end){
+        terminal_writestring("it's heap_start\n");
+    }*/
+
     struct heap_area *ret = best_fit;
     uint32_t next_page = ((uint32_t)best_fit & ~0b111111111111) + PAGE_SIZE;
     size_t full_size = size + (next_page - (uint32_t)best_fit) + sizeof(struct heap_area);
@@ -472,23 +515,40 @@ void *kpagealloc(size_t n){
         ret = (struct heap_area*)(next_page - sizeof(struct heap_area));
         set_prev_address(ret, best_fit);
         set_next_address(ret, next);
+        set_prev_address(next, ret);
         set_next_address(best_fit, ret);
+
+        if(get_prev_address(ret) == heap_start && get_next_address(ret) == heap_end){
+            terminal_writestring("new start added!\n");
+        }
     }
 
     if(best_size - full_size > sizeof(struct heap_area) * 2){
         //Insert a head at the end of the allocated area if
         // the free area after the allocated area is large
         // enough to permit this.
-        struct heap_area *new = (struct heap_area*)((uint32_t)ret + size);
+        struct heap_area *new = (struct heap_area*)((uint32_t)ret + size + sizeof(struct heap_area));
 
-        char *start_page = (char*)((uint32_t)ret & ~0b111111111111);
-        char *end_page = (char*)((uint32_t)new & ~0b111111111111);
+        /*if((uint32_t)new % PAGE_SIZE == 0){
+            terminal_writestring("new end element is page-aligned!\n");
+        }
+
+        if((uint32_t)new - (uint32_t)ret - sizeof(struct heap_area) == size){
+            terminal_writestring("size is correct!\n");
+        }*/
+
+        //char *start_page = (char*)((uint32_t)ret & ~0b111111111111);
+        //char *end_page = (char*)((uint32_t)new & ~0b111111111111);
+
+        char *start_page = (char*)next_page;
+        char *end_page = (char*)new;
 
         //Check if all the allocated pages are mapped.
         //TODO: see kmalloc() todo
         for(char *p = start_page; p <= end_page; p += PAGE_SIZE){
             if(get_physaddr(p) == NULL){
                 map_page(get_page(), p, 0x103);
+                //terminal_writestring("page mapped!\n");
             }
         }
 
@@ -497,7 +557,39 @@ void *kpagealloc(size_t n){
         set_next_address(new, get_next_address(ret));
         set_prev_address(new, ret);
         set_next_address(ret, new);
+
+        /*terminal_writestring("allocated area size: ");
+        iprint(get_area_size(ret));
+        terminal_putchar('\n');
+
+        terminal_writestring("requested size: ");
+        iprint(size);
+        terminal_putchar('\n');*/
+
+        /*if(get_prev_address(new) == ret){
+            terminal_writestring("new->prev == ret!\n");
+        }
+
+        if(get_prev_address(get_prev_address(new)) == heap_start){
+            terminal_writestring("prev value is correct!\n");
+        }
+
+        if(get_next_address(new) == heap_end){
+            terminal_writestring("next value is correct!\n");
+        }*/
+
+        /*if(get_prev_address(get_prev_address(new)) == heap_start && get_next_address(new) == heap_end){
+            terminal_writestring("next/prev values are correct!\n");
+        }
+
+        if(get_area_size(new)){
+            terminal_writestring("tail area has size!\n");
+        }*/
+
+        new_tail = new;
     }
+
+    set_area_used(ret, true);
 
     return (void*)(ret + 1);
 }

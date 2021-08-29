@@ -42,6 +42,8 @@
     void *kpagealloc(size_t n);
     void kfree(void *ptr);
 
+    void check_new_tail();
+
     #ifdef __cplusplus
         }
     #endif

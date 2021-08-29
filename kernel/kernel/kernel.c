@@ -51,8 +51,19 @@ void kernel_main(){
 
     init_heap();
 
-    char *test = kmalloc(50);
+    char *pagetest = kpagealloc(4);
+    if((uint32_t)pagetest % PAGE_SIZE == 0){
+        terminal_writestring("page is aligned correctly\n");
+    }
+    check_new_tail();
+    memset(pagetest, 0, 4 * PAGE_SIZE);
+    check_new_tail();
+    while(1){};
+    char *pagetest1 = pagetest + PAGE_SIZE * 2;
+    strcpy(pagetest1, "Hello page-aligned world!\n");
+    terminal_writestring(pagetest1);
 
+    char *test = kmalloc(50);
     memset(test, 0, 50);
     strcpy(test, "Hello heap world!\n");
     terminal_writestring(test);
