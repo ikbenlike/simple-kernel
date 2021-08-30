@@ -59,7 +59,7 @@ int map_page(void *physaddr, void *virtualaddr, uint16_t flags){
 
     uint32_t *pdeptr = (uint32_t*)(0xFFFFF000 | pdindex << 2);
     if(!(*pdeptr & 1)){
-        void *phys_page = get_page();
+        void *phys_page = get_page("map_page()\n");
         *pdeptr = (uint32_t)phys_page | 0x103;
         flush_full_tlb();
     }
@@ -131,20 +131,86 @@ bool get_page_state(void *physaddr){
     return pmm.bitmap[index] & (1 << offset);
 }
 
+/*TODO: fix this function because its a whole mess
+and it returns the same value multiple times, also
+seems to cause page fault.
 void *get_page(){
     pmm.bitmap[pmm.next_index] |= 1 << pmm.next_offset;
     void *r = offsets_to_physaddr(pmm.next_index, pmm.next_offset);
 
-    for(uint32_t i = pmm.next_index; i < pmm.size; i++){
-        if(pmm.bitmap[i] < (uint8_t)~0){
-            uint8_t j = first_zero_in_byte(pmm.bitmap[i]);
-            pmm.next_offset = i;
-            pmm.next_index = j;
+    terminal_writestring("index at start: ");
+    iprint(pmm.next_index);
+    terminal_putchar('\n');
+
+    //size_t id = 0;
+    //size_t of = 0;
+
+    terminal_writestring("pmm value: ");
+    iprint(pmm.bitmap[pmm.next_index]);
+    terminal_putchar('\n');
+
+    if(pmm.bitmap[pmm.next_index] == (uint8_t)~0U){        
+        for(uint32_t i = pmm.next_index; i < pmm.size; i++){
+        //for(uint32_t i = 0; i < pmm.size; i++){
+            if(pmm.bitmap[i] < (uint8_t)~0){
+                uint8_t j = first_zero_in_byte(pmm.bitmap[i]);
+                pmm.next_offset = i;
+                pmm.next_index = j;
+                //of = i;
+                //id = j;
+                break;
+            }
+        }
+    }
+    else {
+        pmm.next_offset = first_zero_in_byte(pmm.bitmap[pmm.next_index]);
+    }
+
+    terminal_writestring("index at end: ");
+    iprint(pmm.next_index);
+    terminal_putchar('\n');
+
+    //pmm.bitmap[id] |= 1 << of;
+    //return offsets_to_physaddr(id, of);
+    return r;
+}*/
+
+void *get_page(char *f){
+    terminal_writestring(f);
+    terminal_writestring("pmm.size: ");
+    iprint(pmm.size);
+    terminal_putchar('\n');
+
+    terminal_writestring("pmm.free_pages: ");
+    iprint(pmm.free_pages);
+    terminal_putchar('\n');
+
+    void *page = NULL;
+
+    uint32_t i = 0;
+    uint8_t o = 0;
+
+    for(i = 0; i < pmm.size; i++){
+        if(pmm.bitmap[i] != 0xFF){
+            terminal_writestring("pmm.bitmap[i] != 0xFF\n");
+            o = first_zero_in_byte(pmm.bitmap[i]);
+            page = offsets_to_physaddr(i, o);
+            pmm.bitmap[i] |= 1 << o;
             break;
         }
     }
 
-    return r;
+    terminal_writestring("index, offset: ");
+    iprint(i);
+    terminal_writestring(", ");
+    iprint(o);
+    terminal_putchar('\n');
+    //while(1){};
+
+    if(page == NULL){
+    }
+
+    return page;
 }
 
 void free_page(void *physaddr){
@@ -321,8 +387,8 @@ void init_heap(){
     static bool ran = false;
     if(ran == true) return;
 
-    map_page(get_page(), heap_start, 0x103);
-    map_page(get_page(), (void*)((uint32_t)heap_end & ~0b111111111111), 0x103);
+    map_page(get_page("init_heap()\n"), heap_start, 0x103);
+    map_page(get_page("init_heap()\n"), (void*)((uint32_t)heap_end & ~0b111111111111), 0x103);
     set_next_address(heap_start, heap_end);
     set_prev_address(heap_start, NULL);
     set_area_epsilon(heap_start, false);
@@ -381,7 +447,7 @@ void *kmalloc(size_t size){
         //terminal_writestring("end of loop\n");
     }
 
-    terminal_writestring("after loop\n");
+    //terminal_writestring("after loop\n");
 
     if(best_fit == NULL) return NULL;
 
@@ -404,7 +470,7 @@ void *kmalloc(size_t size){
         // the page is already mapped is less computationally expensive.
         for(char *p = start_page; p <= end_page; p += PAGE_SIZE){
             if(get_physaddr(p) == NULL){
-                map_page(get_page(), p, 0x103);
+                map_page(get_page("kmalloc()\n"), p, 0x103);
             }
         }
 
@@ -459,8 +525,8 @@ void *krealloc(void *ptr, size_t size){
 
 struct heap_area *new_tail = NULL;
 
-void check_new_tail(){
-    if(new_tail == NULL) return;
+char *check_new_tail(){
+    if(new_tail == NULL) return NULL;
 
     terminal_writestring("new_tail->prev: ");
     iprint((uint32_t)get_prev_address(new_tail));
@@ -468,6 +534,8 @@ void check_new_tail(){
     terminal_writestring("new_tail->next: ");
     iprint((uint32_t)get_next_address(new_tail));
     terminal_putchar('\n');
+
+    return (char*)new_tail;
 }
 
 //TODO: implement kpalloc()/kpagealloc()
@@ -535,6 +603,15 @@ void *kpagealloc(size_t n){
 
         if((uint32_t)new - (uint32_t)ret - sizeof(struct heap_area) == size){
             terminal_writestring("size is correct!\n");
+        }
+
+        uint32_t area_start = (uint32_t)(ret + 1);
+        if((uint32_t)new >= area_start + size){
+            terminal_writestring("new is outside allocation\n");
+        }
+
+        if(ret > heap_start){
+            terminal_writestring("area is in heap!\n");
         }*/
 
         //char *start_page = (char*)((uint32_t)ret & ~0b111111111111);
@@ -545,12 +622,26 @@ void *kpagealloc(size_t n){
 
         //Check if all the allocated pages are mapped.
         //TODO: see kmalloc() todo
+        size_t i = 0;
+        void *gps[80] = {0};
         for(char *p = start_page; p <= end_page; p += PAGE_SIZE){
             if(get_physaddr(p) == NULL){
-                map_page(get_page(), p, 0x103);
-                //terminal_writestring("page mapped!\n");
+                void *gp = get_page("kpagealloc()\n");
+                map_page(gp, p, 0x103);
+                iprint((uint32_t)gp);
+                terminal_putchar('\n');
+                for(size_t x = 0; x < i; x++){
+                    if(gp == gps[x]){
+                        terminal_writestring("page already present!\n");
+                    }
+                }
+                gps[i++] = gp;
+
+                terminal_writestring("page mapped!\n");
             }
         }
+
+        //while(1){};
 
         new->prev = 0;
         new->next = 0;
@@ -558,13 +649,13 @@ void *kpagealloc(size_t n){
         set_prev_address(new, ret);
         set_next_address(ret, new);
 
-        /*terminal_writestring("allocated area size: ");
+        terminal_writestring("allocated area size: ");
         iprint(get_area_size(ret));
         terminal_putchar('\n');
 
         terminal_writestring("requested size: ");
         iprint(size);
-        terminal_putchar('\n');*/
+        terminal_putchar('\n');
 
         /*if(get_prev_address(new) == ret){
             terminal_writestring("new->prev == ret!\n");

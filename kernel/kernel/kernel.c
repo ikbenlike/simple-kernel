@@ -39,9 +39,9 @@ void kernel_main(){
         terminal_writestring("amazing\n");
     }
 
-    if(get_page() != get_page()){
+    /*if(get_page() != get_page()){
         terminal_writestring("get_page() probably works partially at least\n");
-    }
+    }*/
 
     load_initial_idt();
 
@@ -55,9 +55,14 @@ void kernel_main(){
     if((uint32_t)pagetest % PAGE_SIZE == 0){
         terminal_writestring("page is aligned correctly\n");
     }
-    check_new_tail();
-    memset(pagetest, 0, 4 * PAGE_SIZE);
-    check_new_tail();
+    /*char *nt = check_new_tail();
+
+    if((uint32_t)nt - (uint32_t)pagetest == 4 * PAGE_SIZE){
+        terminal_writestring("they're the same\n");
+    }*/
+
+    memset(pagetest, 0, 4);
+    //check_new_tail();
     while(1){};
     char *pagetest1 = pagetest + PAGE_SIZE * 2;
     strcpy(pagetest1, "Hello page-aligned world!\n");

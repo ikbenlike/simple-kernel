@@ -22,6 +22,7 @@
         uint32_t size;
         uint32_t next_index;
         uint8_t next_offset;
+        uint32_t free_pages;
         bool set_up;
     };
 
@@ -30,7 +31,7 @@
     int map_page(void *physaddr, void *virtualaddr, uint16_t flags);
     int unmap_page(void *virtualaddr);
     bool get_page_state(void *physaddr);
-    void *get_page();
+    void *get_page(char*);
     void free_page(void *physaddr);
     void late_pmm_init(struct managed_memory p);
 
@@ -42,7 +43,7 @@
     void *kpagealloc(size_t n);
     void kfree(void *ptr);
 
-    void check_new_tail();
+    char *check_new_tail();
 
     #ifdef __cplusplus
         }
