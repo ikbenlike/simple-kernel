@@ -110,12 +110,13 @@ void init_frame_allocator(uint32_t multiboot_magic, struct multiboot_info *mbh){
     pmm->size = bitmap_size;
     pmm->next_index = 0;
     pmm->next_offset = 0;
+    pmm->free_pages = 0;
     pmm->set_up = false;
 
-    for(uint32_t i = 0; i < early_pmm.size; i++){
-        early_pmm.bitmap[i] = (uint8_t)~0;
+    for(uint32_t i = 0; i < pmm->size; i++){
+        pmm->bitmap[i] = 0xFF;
     }
-
+    
     bool pmm_next_set = false;
     cur_addr = (uintptr_t)mmap_start;
     while(cur_addr < mmap_end){
@@ -134,6 +135,7 @@ void init_frame_allocator(uint32_t multiboot_magic, struct multiboot_info *mbh){
                 uint32_t offset = 0;
                 early_physaddr_to_offsets(page_addr, &index, &offset);
                 pmm->bitmap[index] &= ~(1 << offset);
+                pmm->free_pages++;
 
                 if(pmm_next_set == false){
                     pmm->next_index = index;
