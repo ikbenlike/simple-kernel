@@ -57,14 +57,22 @@ int map_page(void *physaddr, void *virtualaddr, uint16_t flags){
     uint32_t pdindex = va >> 22;
     uint32_t ptindex = va >> 12 & 0b1111111111;
 
+
+    bool new = false;
     uint32_t *pdeptr = (uint32_t*)(0xFFFFF000 | pdindex << 2);
     if(!(*pdeptr & 1)){
         void *phys_page = get_page("map_page()\n");
-        *pdeptr = (uint32_t)phys_page | 0x103;
+        *pdeptr = (uint32_t)phys_page | 0x3;
+        new = true;
         flush_full_tlb();
     }
 
     uint32_t *pt = ((uint32_t*)0xFFC00000) + (0x400 * pdindex);
+
+    if(new == true){
+        memset(pt, 0, PAGE_SIZE);
+    }
+
     if(pt[ptindex] & 1){
         return MAP_PAGE_MAPPING_ALREADY_PRESENT;
     }
@@ -387,8 +395,9 @@ void init_heap(){
     static bool ran = false;
     if(ran == true) return;
 
-    map_page(get_page("init_heap()\n"), heap_start, 0x103);
-    map_page(get_page("init_heap()\n"), (void*)((uint32_t)heap_end & ~0b111111111111), 0x103);
+    map_page(get_page("init_heap()\n"), heap_start, 0x3);
+    map_page(get_page("init_heap()\n"), (void*)((uint32_t)heap_end & ~0b111111111111), 0x3);
+
     set_next_address(heap_start, heap_end);
     set_prev_address(heap_start, NULL);
     set_area_epsilon(heap_start, false);
