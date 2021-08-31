@@ -85,11 +85,11 @@ _start:
 6:
 #    movl $(0x000B8000 | 0x103), boot_page_table1 - 0xC0000000 + 1022 * 4
 
-    movl $(boot_page_table1 - 0xC0000000 + 0x103), boot_page_directory - 0xC0000000 + 0
-    movl $(boot_page_table1 - 0xC0000000 + 0x103), boot_page_directory - 0xC0000000 + 768 * 4
+    movl $(boot_page_table1 - 0xC0000000 + 0x3), boot_page_directory - 0xC0000000 + 0
+    movl $(boot_page_table1 - 0xC0000000 + 0x3), boot_page_directory - 0xC0000000 + 768 * 4
 
     movl $(boot_page_directory - 0xC0000000), %edx
-    orl $0x103, %edx
+    orl $0x3, %edx
     movl %edx, boot_page_directory - 0xC0000000 + 1023 * 4
 
     movl $(boot_page_directory - 0xC0000000), %ecx
