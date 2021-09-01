@@ -61,8 +61,8 @@ void init_frame_allocator(uint32_t multiboot_magic, struct multiboot_info *mbh){
     extern symbol _kernel_start;
     extern symbol _kernel_end;
 
-    const char *kernel_start_p = _kernel_start;
-    const char *kernel_end_p = _kernel_end - 0xC0000000;
+    char *const kernel_start_p = _kernel_start;
+    char *const kernel_end_p = _kernel_end - 0xC0000000;
 
     const uint32_t kernel_size = (uint32_t)(kernel_end_p - kernel_start_p);
     const uint32_t kernel_page_count = div_ceil(kernel_size, PAGE_SIZE);
@@ -94,11 +94,11 @@ void init_frame_allocator(uint32_t multiboot_magic, struct multiboot_info *mbh){
     const uint32_t bitmap_size = div_ceil(page_count, 8);
     const uint32_t bitmap_page_count = div_ceil(bitmap_size, PAGE_SIZE);
     const uint32_t combined_page_count = kernel_page_count + bitmap_page_count;
-    const char *combined_end_p = kernel_start_p + PAGE_SIZE * combined_page_count;
+    char *const combined_end_p = kernel_start_p + PAGE_SIZE * combined_page_count;
 
     uint32_t bitmapaddr = 0;
     if(kernel_entry != (void*)0 && kernel_entry->length / PAGE_SIZE >= combined_page_count){
-        bitmapaddr = (uint32_t)kernel_start_p + combined_page_count * PAGE_SIZE;
+        bitmapaddr = (uint32_t)kernel_start_p + kernel_page_count * PAGE_SIZE;
     }
     else {
         return; // TODO: handle finding another section in memory
