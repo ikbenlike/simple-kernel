@@ -184,14 +184,14 @@ void *get_page(){
 }*/
 
 void *get_page(char *f){
-    terminal_writestring(f);
+    /*terminal_writestring(f);
     terminal_writestring("pmm.size: ");
     iprint(pmm.size);
     terminal_putchar('\n');
 
     terminal_writestring("pmm.free_pages: ");
     iprint(pmm.free_pages);
-    terminal_putchar('\n');
+    terminal_putchar('\n');*/
 
     void *page = NULL;
 
@@ -200,7 +200,7 @@ void *get_page(char *f){
 
     for(i = 0; i < pmm.size; i++){
         if(pmm.bitmap[i] != 0xFF){
-            terminal_writestring("pmm.bitmap[i] != 0xFF\n");
+            //terminal_writestring("pmm.bitmap[i] != 0xFF\n");
             o = first_zero_in_byte(pmm.bitmap[i]);
             page = offsets_to_physaddr(i, o);
             pmm.bitmap[i] |= 1 << o;
@@ -208,15 +208,24 @@ void *get_page(char *f){
         }
     }
 
-    terminal_writestring("index, offset: ");
-    iprint(i);
-    terminal_writestring(", ");
-    iprint(o);
-    terminal_putchar('\n');
-    //while(1){};
+    /*if(strcmp(f, "init_heap()\n") != 0 && strcmp(f, "map_page()\n") != 0){
+        terminal_writestring("bitmap virtual address: ");
+        iprint((uint32_t)pmm.bitmap);
+        terminal_putchar('\n');
+        terminal_writestring("bitmap physical address: ");
+        iprint((uint32_t)pmm.bitmappa);
+        terminal_putchar('\n');
+        while(1){};
+    }*/
 
-    if(page == NULL){
-    }
+    /*if(i == 0){
+        terminal_writestring("index, offset: ");
+        iprint(i);
+        terminal_writestring(", ");
+        iprint(o);
+        terminal_putchar('\n');
+        //while(1){};
+    }*/
 
     return page;
 }
@@ -233,6 +242,7 @@ void free_page(void *physaddr){
 
 void late_pmm_init(struct managed_memory p){
     pmm = p;
+    pmm.bitmappa = pmm.bitmap;
 
     const uint32_t kernel_size = (uint32_t)(kernel_end_p - kernel_start_p);
     const uint32_t kernel_page_count = div_ceil(kernel_size, PAGE_SIZE);
@@ -397,6 +407,11 @@ void init_heap(){
 
     map_page(get_page("init_heap()\n"), heap_start, 0x3);
     map_page(get_page("init_heap()\n"), (void*)((uint32_t)heap_end & ~0b111111111111), 0x3);
+
+    heap_start->prev = 0;
+    heap_start->next = 0;
+    heap_end->prev = 0;
+    heap_end->next = 0;
 
     set_next_address(heap_start, heap_end);
     set_prev_address(heap_start, NULL);
@@ -590,14 +605,16 @@ void *kpagealloc(size_t n){
     if(next_page - sizeof(struct heap_area) != (uint32_t)ret){
         struct heap_area *next = get_next_address(ret);
         ret = (struct heap_area*)(next_page - sizeof(struct heap_area));
+        ret->prev = 0;
+        ret->next = 0;
         set_prev_address(ret, best_fit);
         set_next_address(ret, next);
         set_prev_address(next, ret);
         set_next_address(best_fit, ret);
 
-        if(get_prev_address(ret) == heap_start && get_next_address(ret) == heap_end){
+        /*if(get_prev_address(ret) == heap_start && get_next_address(ret) == heap_end){
             terminal_writestring("new start added!\n");
-        }
+        }*/
     }
 
     if(best_size - full_size > sizeof(struct heap_area) * 2){
@@ -636,21 +653,22 @@ void *kpagealloc(size_t n){
         for(char *p = start_page; p <= end_page; p += PAGE_SIZE){
             if(get_physaddr(p) == NULL){
                 void *gp = get_page("kpagealloc()\n");
-                map_page(gp, p, 0x103);
-                iprint((uint32_t)gp);
-                terminal_putchar('\n');
+                map_page(gp, p, 0x3);
+                /*iprint((uint32_t)gp);
+                terminal_putchar('\n');*/
                 for(size_t x = 0; x < i; x++){
                     if(gp == gps[x]){
-                        terminal_writestring("page already present!\n");
+                        //terminal_writestring("page already present!\n");
                     }
                 }
                 gps[i++] = gp;
 
-                terminal_writestring("page mapped!\n");
+                //terminal_writestring("page mapped!\n");
             }
         }
 
         //while(1){};
+
 
         new->prev = 0;
         new->next = 0;
@@ -658,13 +676,21 @@ void *kpagealloc(size_t n){
         set_prev_address(new, ret);
         set_next_address(ret, new);
 
-        terminal_writestring("allocated area size: ");
-        iprint(get_area_size(ret));
+        /*size_t allocated = get_area_size(ret);
+        if(allocated == 0){
+            while(1){};
+        }*/
+
+        /*terminal_writestring("allocated area size: ");
+        iprint(allocated);
         terminal_putchar('\n');
 
         terminal_writestring("requested size: ");
         iprint(size);
-        terminal_putchar('\n');
+        terminal_putchar('\n');*/
+
+
+        //while(1){};
 
         /*if(get_prev_address(new) == ret){
             terminal_writestring("new->prev == ret!\n");
