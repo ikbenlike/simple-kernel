@@ -127,7 +127,7 @@ inline void physaddr_to_offsets(void *physaddr, uint32_t *bm_index, uint32_t *of
     *offset = y % 8;
 }
 
-inline void *offsets_to_physaddr(uint32_t bm_index, uint32_t offset){
+inline void *offsets_to_physaddr(uint32_t bm_index, uint8_t offset){
     return (void*)(PAGE_SIZE * (bm_index * 8 + offset));
 }
 
@@ -184,48 +184,21 @@ void *get_page(){
 }*/
 
 void *get_page(char *f){
-    /*terminal_writestring(f);
-    terminal_writestring("pmm.size: ");
-    iprint(pmm.size);
-    terminal_putchar('\n');
+    void *page = offsets_to_physaddr(pmm.next_index, pmm.next_offset);
+    pmm.bitmap[pmm.next_index] |= 1 << pmm.next_offset;
 
-    terminal_writestring("pmm.free_pages: ");
-    iprint(pmm.free_pages);
-    terminal_putchar('\n');*/
-
-    void *page = NULL;
-
-    uint32_t i = 0;
-    uint8_t o = 0;
+    uint32_t i = pmm.next_index;
+    uint8_t o = pmm.next_offset;
 
     for(i = 0; i < pmm.size; i++){
         if(pmm.bitmap[i] != 0xFF){
-            //terminal_writestring("pmm.bitmap[i] != 0xFF\n");
             o = first_zero_in_byte(pmm.bitmap[i]);
-            page = offsets_to_physaddr(i, o);
-            pmm.bitmap[i] |= 1 << o;
             break;
         }
     }
 
-    /*if(strcmp(f, "init_heap()\n") != 0 && strcmp(f, "map_page()\n") != 0){
-        terminal_writestring("bitmap virtual address: ");
-        iprint((uint32_t)pmm.bitmap);
-        terminal_putchar('\n');
-        terminal_writestring("bitmap physical address: ");
-        iprint((uint32_t)pmm.bitmappa);
-        terminal_putchar('\n');
-        while(1){};
-    }*/
-
-    /*if(i == 0){
-        terminal_writestring("index, offset: ");
-        iprint(i);
-        terminal_writestring(", ");
-        iprint(o);
-        terminal_putchar('\n');
-        //while(1){};
-    }*/
+    pmm.next_index = i;
+    pmm.next_offset = o;
 
     return page;
 }
