@@ -61,7 +61,7 @@ int map_page(void *physaddr, void *virtualaddr, uint16_t flags){
     bool new = false;
     uint32_t *pdeptr = (uint32_t*)(0xFFFFF000 | pdindex << 2);
     if(!(*pdeptr & 1)){
-        void *phys_page = get_page("map_page()\n");
+        void *phys_page = get_page();
         *pdeptr = (uint32_t)phys_page | 0x3;
         new = true;
         flush_full_tlb();
@@ -139,51 +139,7 @@ bool get_page_state(void *physaddr){
     return pmm.bitmap[index] & (1 << offset);
 }
 
-/*TODO: fix this function because its a whole mess
-and it returns the same value multiple times, also
-seems to cause page fault.
 void *get_page(){
-    pmm.bitmap[pmm.next_index] |= 1 << pmm.next_offset;
-    void *r = offsets_to_physaddr(pmm.next_index, pmm.next_offset);
-
-    terminal_writestring("index at start: ");
-    iprint(pmm.next_index);
-    terminal_putchar('\n');
-
-    //size_t id = 0;
-    //size_t of = 0;
-
-    terminal_writestring("pmm value: ");
-    iprint(pmm.bitmap[pmm.next_index]);
-    terminal_putchar('\n');
-
-    if(pmm.bitmap[pmm.next_index] == (uint8_t)~0U){        
-        for(uint32_t i = pmm.next_index; i < pmm.size; i++){
-        //for(uint32_t i = 0; i < pmm.size; i++){
-            if(pmm.bitmap[i] < (uint8_t)~0){
-                uint8_t j = first_zero_in_byte(pmm.bitmap[i]);
-                pmm.next_offset = i;
-                pmm.next_index = j;
-                //of = i;
-                //id = j;
-                break;
-            }
-        }
-    }
-    else {
-        pmm.next_offset = first_zero_in_byte(pmm.bitmap[pmm.next_index]);
-    }
-
-    terminal_writestring("index at end: ");
-    iprint(pmm.next_index);
-    terminal_putchar('\n');
-
-    //pmm.bitmap[id] |= 1 << of;
-    //return offsets_to_physaddr(id, of);
-    return r;
-}*/
-
-void *get_page(char *f){
     void *page = offsets_to_physaddr(pmm.next_index, pmm.next_offset);
     pmm.bitmap[pmm.next_index] |= 1 << pmm.next_offset;
 
@@ -215,7 +171,6 @@ void free_page(void *physaddr){
 
 void late_pmm_init(struct managed_memory p){
     pmm = p;
-    pmm.bitmappa = pmm.bitmap;
 
     const uint32_t kernel_size = (uint32_t)(kernel_end_p - kernel_start_p);
     const uint32_t kernel_page_count = div_ceil(kernel_size, PAGE_SIZE);
@@ -320,17 +275,7 @@ static inline void set_area_used(struct heap_area *area, bool used){
 }
 
 static inline bool get_area_epsilon(struct heap_area *area){
-    if(area == NULL){
-        terminal_writestring("epsilon(area) == NULL\n");
-        while(1);
-    }
-    //terminal_writestring("get_area_epsilon()\n");
-    bool r = (bool)((area->next >> 1) & 1U);
-    //if(r == true) terminal_writestring("epsilon == true\n");
-    //else terminal_writestring("epsilon == false\n");
-    return r;
-
-    //return (bool)((area->next >> 1) & 1U);
+    return (bool)((area->next >> 1) & 1U);
 }
 
 static inline void set_area_epsilon(struct heap_area *area, bool ep){
@@ -342,7 +287,6 @@ static inline void set_area_epsilon(struct heap_area *area, bool ep){
 
 static inline size_t get_area_size(struct heap_area *area){
     struct heap_area *next = get_next_address(area);
-    //terminal_writestring("get_area_size()\n");
     if(get_area_epsilon(area) || next == NULL)
         return 0;
 
@@ -378,8 +322,8 @@ void init_heap(){
     static bool ran = false;
     if(ran == true) return;
 
-    map_page(get_page("init_heap()\n"), heap_start, 0x3);
-    map_page(get_page("init_heap()\n"), (void*)((uint32_t)heap_end & ~0b111111111111), 0x3);
+    map_page(get_page(), heap_start, 0x3);
+    map_page(get_page(), (void*)((uint32_t)heap_end & ~0b111111111111), 0x3);
 
     heap_start->prev = 0;
     heap_start->next = 0;
@@ -402,13 +346,12 @@ void init_heap(){
     ran = true;
 }
 
-//TODO: maybe enforce kmalloc() return to be 16-byte aligned?
 void *kmalloc(size_t size){
     if (size == 0)
         return NULL;
 
     //Ensure there is space for the padding we require to
-    // have memory areas start align with 16 bytes.
+    // have memory areas start align with 8 bytes.
     size = div_ceil(size + sizeof(struct heap_area), 8) * 8;
     //TODO: see if `sizeof(struct heap_area)` is really needed here
 
@@ -423,28 +366,14 @@ void *kmalloc(size_t size){
         //Look for area with smallest difference between wanted size
         // and area size.
 
-        /*terminal_writestring("a->prev: ");
-        iprint((uint32_t)(a->prev));
-        terminal_putchar('\n');
-        terminal_writestring("a->next: ");
-        iprint((uint32_t)(a->next));
-        terminal_putchar('\n');*/
-
-        //terminal_writestring("kmalloc loop\n");
         size_t area_size = 0;
-        if(get_area_used(a) == true){
-            //terminal_writestring("area used!\n");
+        if(get_area_used(a) == true)
             continue;
-        }
         else if((area_size = get_area_size(a)) > size && best_size - size > area_size - size){
-            //terminal_writestring("area fit\n");
             best_size = area_size;
             best_fit = a;
         }
-        //terminal_writestring("end of loop\n");
     }
-
-    //terminal_writestring("after loop\n");
 
     if(best_fit == NULL) return NULL;
 
@@ -467,7 +396,7 @@ void *kmalloc(size_t size){
         // the page is already mapped is less computationally expensive.
         for(char *p = start_page; p <= end_page; p += PAGE_SIZE){
             if(get_physaddr(p) == NULL){
-                map_page(get_page("kmalloc()\n"), p, 0x103);
+                map_page(get_page(), p, 0x103);
             }
         }
 
@@ -520,22 +449,6 @@ void *krealloc(void *ptr, size_t size){
     return new;
 }
 
-struct heap_area *new_tail = NULL;
-
-char *check_new_tail(){
-    if(new_tail == NULL) return NULL;
-
-    terminal_writestring("new_tail->prev: ");
-    iprint((uint32_t)get_prev_address(new_tail));
-    terminal_putchar('\n');
-    terminal_writestring("new_tail->next: ");
-    iprint((uint32_t)get_next_address(new_tail));
-    terminal_putchar('\n');
-
-    return (char*)new_tail;
-}
-
-//TODO: implement kpalloc()/kpagealloc()
 void *kpagealloc(size_t n){
     if(n == 0)
         return NULL;
@@ -564,10 +477,6 @@ void *kpagealloc(size_t n){
 
     if(best_fit == NULL) return NULL;
 
-    /*if(best_fit == heap_start && get_next_address(heap_start) == heap_end){
-        terminal_writestring("it's heap_start\n");
-    }*/
-
     struct heap_area *ret = best_fit;
     uint32_t next_page = ((uint32_t)best_fit & ~0b111111111111) + PAGE_SIZE;
     size_t full_size = size + (next_page - (uint32_t)best_fit) + sizeof(struct heap_area);
@@ -584,10 +493,6 @@ void *kpagealloc(size_t n){
         set_next_address(ret, next);
         set_prev_address(next, ret);
         set_next_address(best_fit, ret);
-
-        /*if(get_prev_address(ret) == heap_start && get_next_address(ret) == heap_end){
-            terminal_writestring("new start added!\n");
-        }*/
     }
 
     if(best_size - full_size > sizeof(struct heap_area) * 2){
@@ -596,96 +501,22 @@ void *kpagealloc(size_t n){
         // enough to permit this.
         struct heap_area *new = (struct heap_area*)((uint32_t)ret + size + sizeof(struct heap_area));
 
-        /*if((uint32_t)new % PAGE_SIZE == 0){
-            terminal_writestring("new end element is page-aligned!\n");
-        }
-
-        if((uint32_t)new - (uint32_t)ret - sizeof(struct heap_area) == size){
-            terminal_writestring("size is correct!\n");
-        }
-
-        uint32_t area_start = (uint32_t)(ret + 1);
-        if((uint32_t)new >= area_start + size){
-            terminal_writestring("new is outside allocation\n");
-        }
-
-        if(ret > heap_start){
-            terminal_writestring("area is in heap!\n");
-        }*/
-
-        //char *start_page = (char*)((uint32_t)ret & ~0b111111111111);
-        //char *end_page = (char*)((uint32_t)new & ~0b111111111111);
-
         char *start_page = (char*)next_page;
         char *end_page = (char*)new;
 
         //Check if all the allocated pages are mapped.
         //TODO: see kmalloc() todo
-        size_t i = 0;
-        void *gps[80] = {0};
         for(char *p = start_page; p <= end_page; p += PAGE_SIZE){
             if(get_physaddr(p) == NULL){
-                void *gp = get_page("kpagealloc()\n");
-                map_page(gp, p, 0x3);
-                /*iprint((uint32_t)gp);
-                terminal_putchar('\n');*/
-                for(size_t x = 0; x < i; x++){
-                    if(gp == gps[x]){
-                        //terminal_writestring("page already present!\n");
-                    }
-                }
-                gps[i++] = gp;
-
-                //terminal_writestring("page mapped!\n");
+                map_page(get_page(), p, 0x3);
             }
         }
-
-        //while(1){};
-
 
         new->prev = 0;
         new->next = 0;
         set_next_address(new, get_next_address(ret));
         set_prev_address(new, ret);
         set_next_address(ret, new);
-
-        /*size_t allocated = get_area_size(ret);
-        if(allocated == 0){
-            while(1){};
-        }*/
-
-        /*terminal_writestring("allocated area size: ");
-        iprint(allocated);
-        terminal_putchar('\n');
-
-        terminal_writestring("requested size: ");
-        iprint(size);
-        terminal_putchar('\n');*/
-
-
-        //while(1){};
-
-        /*if(get_prev_address(new) == ret){
-            terminal_writestring("new->prev == ret!\n");
-        }
-
-        if(get_prev_address(get_prev_address(new)) == heap_start){
-            terminal_writestring("prev value is correct!\n");
-        }
-
-        if(get_next_address(new) == heap_end){
-            terminal_writestring("next value is correct!\n");
-        }*/
-
-        /*if(get_prev_address(get_prev_address(new)) == heap_start && get_next_address(new) == heap_end){
-            terminal_writestring("next/prev values are correct!\n");
-        }
-
-        if(get_area_size(new)){
-            terminal_writestring("tail area has size!\n");
-        }*/
-
-        new_tail = new;
     }
 
     set_area_used(ret, true);
