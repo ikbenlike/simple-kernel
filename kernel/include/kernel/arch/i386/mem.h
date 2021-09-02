@@ -31,7 +31,7 @@
     int map_page(void *physaddr, void *virtualaddr, uint16_t flags);
     int unmap_page(void *virtualaddr);
     bool get_page_state(void *physaddr);
-    void *get_page(char*);
+    void *get_page();
     void free_page(void *physaddr);
     void late_pmm_init(struct managed_memory p);
 
@@ -42,8 +42,6 @@
     void *krealloc(void *ptr, size_t size);
     void *kpagealloc(size_t n);
     void kfree(void *ptr);
-
-    char *check_new_tail();
 
     #ifdef __cplusplus
         }
