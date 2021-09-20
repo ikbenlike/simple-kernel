@@ -4,20 +4,6 @@
 
 extern void iprint(uint64_t);
 
-void outb(uint16_t port, uint8_t value){
-    asm volatile ("outb %0, %1" : : "a"(value), "Nd" (port) : "memory");
-}
-
-uint8_t inb(uint16_t port){
-    uint8_t r = 0;
-    asm volatile ("inb %1, %0" : "=a" (r) : "Nd" (port) : "memory");
-    return r;
-}
-
-void iowait(){
-    inb(0x80);
-}
-
 void pic_send_eoi(uint8_t irq){
     if(irq > 7){
         outb(PIC2_COMMAND, PIC_COMMAND_EOI);
