@@ -164,10 +164,13 @@
     struct pci_device_base {
         uint16_t device_id;
         uint16_t vendor_id;
+        uint16_t status;
+        uint16_t command;
         uint8_t class;
         uint8_t subclass;
         uint8_t prog_if;
         uint8_t revision_id;
+        uint8_t bist;
         uint8_t header_type;
         uint8_t latency_timer;
         uint8_t cache_line_size;
