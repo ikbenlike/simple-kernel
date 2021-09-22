@@ -27,7 +27,7 @@ bool pci_read_device_base(uint8_t bus, uint8_t slot, uint8_t func, struct pci_de
     uint32_t device_and_vendor = pci_read_config(bus, slot, func, PCI_DEVICE_AND_VENDOR);
 
     //If response is all ones, device doesn't exist. Return false for failure.
-    if(device_and_vendor = 0xFFFFFFFF) return false;
+    if(device_and_vendor == 0xFFFFFFFF) return false;
 
     uint32_t status_and_command = pci_read_config(bus, slot, func, PCI_STATUS_AND_COMMAND);
     uint32_t class_and_subclass = pci_read_config(bus, slot, func, PCI_CLASS_SUB_PROG_REVISION);

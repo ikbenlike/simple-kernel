@@ -12,6 +12,7 @@
 #include <kernel/gdt.h>
 #include <kernel/idt.h>
 #include <kernel/pic.h>
+#include <kernel/pci.h>
 
 #if defined(__linux__)
 #error "A cross compiler is required to compile the kernel."
@@ -93,6 +94,17 @@ void kernel_main(){
     kfree(test4);
     kfree(big);
     kfree(pagetest);
+
+    struct pci_device_base pci;
+    if(pci_read_device_base(0, 0, 0, &pci)){
+        terminal_writestring("PCI read success!\n");
+        terminal_writestring("Vendor ID: ");
+        iprint(pci.vendor_id);
+        terminal_putchar('\n');
+        terminal_writestring("Device ID: ");
+        iprint(pci.device_id);
+        terminal_putchar('\n');
+    }
 
     while(1){};
 }
