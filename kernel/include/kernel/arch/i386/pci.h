@@ -6,6 +6,7 @@
     #define PCI_CONFIG_DATA    0xCFC
 
     #include <stdint.h>
+    #include <stdbool.h>
 
     enum PCI_Header_Types {
         PCI_ENDPOINT                = 0x00,
@@ -153,6 +154,26 @@
         PCI_PROCESSING_MANAGEMENT   = 0x20,
     };
 
-    uint16_t pci_read_config(uint8_t bus, uint8_t slot, uint8_t func, uint8_t reg);
+    enum PCI_Common_Register_Offsets {
+        PCI_DEVICE_AND_VENDOR       = 0x00,
+        PCI_STATUS_AND_COMMAND      = 0x00,
+        PCI_CLASS_SUB_PROG_REVISION = 0x08,
+        PCI_BIST_HEAD_LAT_CACHE     = 0x0C,
+    };
+
+    struct pci_device_base {
+        uint16_t device_id;
+        uint16_t vendor_id;
+        uint8_t class;
+        uint8_t subclass;
+        uint8_t prog_if;
+        uint8_t revision_id;
+        uint8_t header_type;
+        uint8_t latency_timer;
+        uint8_t cache_line_size;
+    };
+
+    uint32_t pci_read_config(uint8_t bus, uint8_t slot, uint8_t func, uint8_t reg);
+    bool pci_read_device_base(uint8_t bus, uint8_t slot, uint8_t func, struct pci_device_base *data);
 
 #endif
